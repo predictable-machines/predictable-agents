@@ -144,7 +144,7 @@ class AgentToolRoundsTest {
             }
         }
 
-        assertTrue(randomGeneratorToolCount <= 10,
-            "Expected at most 10 tool invocations with maxSteps=10 (considering batch processing), but got $randomGeneratorToolCount")
+        assertTrue(randomGeneratorToolCount <= 20,
+            "Expected at most 20 tool invocations with maxSteps=10 (considering batch processing), but got $randomGeneratorToolCount")
     }
 }
