@@ -1,6 +1,4 @@
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-
-rootProject.name = "predictable-agents"
+rootProject.name = "build-logic"
 
 pluginManagement {
     repositories {
@@ -26,7 +24,12 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        gradlePluginPortal()
+    }
+
+    versionCatalogs {
+        create("libs") {
+            from(files("../gradle/libs.versions.toml"))
+        }
     }
 }
-
-includeBuild("build-logic")
