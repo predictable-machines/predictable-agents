@@ -1,3 +1,5 @@
+import com.predictable.machines.build.logic.isCI
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.conventions)
@@ -49,14 +51,14 @@ tasks
 mavenPublishing {
     publishToMavenCentral()
 
-    signAllPublications()
+    if(isCI) signAllPublications()
 
     coordinates(group.toString(), "agents", version.toString())
 
     pom {
         name = "Predictable Agents"
         description = "Kotlin Multiplatform library for building AI agents with tool use and OpenAI support."
-        inceptionYear = "2024"
+        inceptionYear = "2025"
         url = "https://github.com/predictable-machines/predictable-agents"
         licenses {
             license {
