@@ -30,3 +30,7 @@ dependencyResolutionManagement {
 }
 
 includeBuild("build-logic")
+
+include(
+    ":agents",
+)
