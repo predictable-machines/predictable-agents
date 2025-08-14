@@ -1,5 +1,3 @@
-import com.vanniktech.maven.publish.SonatypeHost
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.conventions)
@@ -49,35 +47,34 @@ tasks
     .configureEach { enabled = false }
 
 mavenPublishing {
-    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    publishToMavenCentral()
 
     signAllPublications()
 
-    coordinates(group.toString(), "library", version.toString())
+    coordinates(group.toString(), "agents", version.toString())
 
     pom {
-        name = "My library"
-        description = "A library."
+        name = "Predictable Agents"
+        description = "Kotlin Multiplatform library for building AI agents with tool use and OpenAI support."
         inceptionYear = "2024"
-        url = "https://github.com/predictable-machines/predictable/"
+        url = "https://github.com/predictable-machines/predictable-agents"
         licenses {
             license {
-                name = "XXX"
-                url = "YYY"
-                distribution = "ZZZ"
+                name = "Apache License, Version 2.0"
+                url = "https://www.apache.org/licenses/LICENSE-2.0"
             }
         }
         developers {
             developer {
-                id = "XXX"
-                name = "YYY"
-                url = "ZZZ"
+                id = "predictable-machines"
+                name = "Predictable Machines"
+                url = "https://github.com/predictable-machines"
             }
         }
         scm {
-            url = "XXX"
-            connection = "YYY"
-            developerConnection = "ZZZ"
+            url = "https://github.com/predictable-machines/predictable-agents"
+            connection = "scm:git:https://github.com/predictable-machines/predictable-agents.git"
+            developerConnection = "scm:git:ssh://git@github.com/predictable-machines/predictable-agents.git"
         }
     }
 }
