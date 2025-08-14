@@ -1,3 +1,9 @@
+import com.predictable.machines.build.logic.setupKotlinMultiplatformAndroid
+import com.predictable.machines.build.logic.setupKotlinMultiplatformAppleTargets
+import com.predictable.machines.build.logic.setupKotlinMultiplatformJvm
+import com.predictable.machines.build.logic.setupKotlinMultiplatformLinuxTargets
+import com.predictable.machines.build.logic.setupKotlinMultiplatformWAsmTargets
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.conventions)
@@ -6,6 +12,12 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.mavenPublish)
 }
+
+setupKotlinMultiplatformAndroid()
+setupKotlinMultiplatformJvm()
+setupKotlinMultiplatformAppleTargets()
+setupKotlinMultiplatformLinuxTargets()
+setupKotlinMultiplatformWAsmTargets()
 
 kotlin {
     sourceSets {

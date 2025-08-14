@@ -77,7 +77,8 @@ private fun Project.dokkaMavenPublishSetup() {
     withMavenPublish {
         withKotlinJvm {
             configure(
-                platform = KotlinJvm(javadocJar = JavadocJar.Dokka("dokkaGenerate"), sourcesJar = true)
+                platform =
+                    KotlinJvm(javadocJar = JavadocJar.Dokka("dokkaGenerate"), sourcesJar = true)
             )
         }
         withKotlinMultiplatform {
@@ -155,33 +156,38 @@ private fun Project.openApiSetup() {
     }
 }
 
-private fun Project.kotlinJvmSetup() {
+fun Project.kotlinJvmSetup() {
     withKotlinJvm { compilerOptions.jvmTarget.set(JvmTarget.fromTarget(libs.versions.java.get())) }
 }
 
-private fun Project.kotlinMultiplatformSetup() {
+fun Project.kotlinMultiplatformSetup() {
     withKotlinMultiplatform(KotlinMultiplatformExtension::applyDefaultHierarchyTemplate)
-    setupKotlinMultiplatformAndroid()
-    setupKotlinMultiplatformJvm()
-    setupKotlinMultiplatformAppleTargets()
-    setupKotlinMultiplatformLinuxTargets()
-    setupKotlinMultiplatformWAsmTargets()
+    // setupKotlinMultiplatformAndroid()
+    // setupKotlinMultiplatformJvm()
+    // setupKotlinMultiplatformAppleTargets()
+    // setupKotlinMultiplatformLinuxTargets()
+    // setupKotlinMultiplatformWAsmTargets()
 }
 
-private fun Project.setupKotlinMultiplatformAndroid() {
+fun Project.setupKotlinMultiplatformAndroid() {
     withKotlinMultiplatform {
         withAndroid { androidTarget { compilerOptions { jvmTarget.set(JvmTarget.JVM_11) } } }
         withAndroidLibrary { androidTarget { publishLibraryVariants("release") } }
     }
 }
 
-private fun Project.setupKotlinMultiplatformJvm() {
+fun Project.setupKotlinMultiplatformJvm() {
     withKotlinMultiplatform {
         jvm { compilerOptions.jvmTarget.set(JvmTarget.fromTarget(libs.versions.java.get())) }
     }
 }
 
-private fun Project.setupKotlinMultiplatformAppleTargets() {
+fun Project.setupKotlinMultiplatformAppleTargets() {
+    if (isCI && !isMacOS) return
+    withKotlinMultiplatform { setupKotlinMultiplatformiOSTargets() }
+}
+
+fun Project.setupKotlinMultiplatformiOSTargets() {
     if (isCI && !isMacOS) return
     val projectName: String = name
     withKotlinMultiplatform {
@@ -194,12 +200,12 @@ private fun Project.setupKotlinMultiplatformAppleTargets() {
     }
 }
 
-private fun Project.setupKotlinMultiplatformLinuxTargets() {
+fun Project.setupKotlinMultiplatformLinuxTargets() {
     if (isCI && !isLinux) return
     withKotlinMultiplatform { linuxX64() }
 }
 
-private fun Project.setupKotlinMultiplatformWAsmTargets() {
+fun Project.setupKotlinMultiplatformWAsmTargets() {
     if (isCI && !isLinux) return
     withKotlinMultiplatform {
         wasmJs {
