@@ -33,4 +33,5 @@ includeBuild("build-logic")
 
 include(
     ":agents",
+    ":mcp",
 )

@@ -59,7 +59,7 @@ fun Project.withOpenApi(block: OpenApiConfig.() -> Unit) {
 }
 
 fun Project.withMavenPublish(block: MavenPublishBaseExtension.() -> Unit) {
-    pluginManager.withPlugin(libs.plugins.openApi.get().pluginId) {
+    pluginManager.withPlugin(libs.plugins.mavenPublish.get().pluginId) {
         configure<MavenPublishBaseExtension> { block(this) }
     }
 }

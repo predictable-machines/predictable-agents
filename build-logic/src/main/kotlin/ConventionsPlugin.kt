@@ -77,14 +77,14 @@ private fun Project.dokkaMavenPublishSetup() {
     withMavenPublish {
         withKotlinJvm {
             configure(
-                platform = KotlinJvm(javadocJar = JavadocJar.Dokka("dokkaHtml"), sourcesJar = true)
+                platform = KotlinJvm(javadocJar = JavadocJar.Dokka("dokkaGenerate"), sourcesJar = true)
             )
         }
         withKotlinMultiplatform {
             configure(
                 platform =
                     KotlinMultiplatform(
-                        javadocJar = JavadocJar.Dokka("dokkaHtml"),
+                        javadocJar = JavadocJar.Dokka("dokkaGenerate"),
                         sourcesJar = true,
                         androidVariantsToPublish = listOf("debug", "release"),
                     )

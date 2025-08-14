@@ -1,5 +1,3 @@
-import com.predictable.machines.build.logic.isCI
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.conventions)
@@ -7,7 +5,6 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.mavenPublish)
-    // alias(libs.plugins.openApi)
 }
 
 kotlin {
@@ -48,35 +45,4 @@ tasks
     }
     .configureEach { enabled = false }
 
-mavenPublishing {
-    publishToMavenCentral()
-
-    if(isCI) signAllPublications()
-
-    coordinates(group.toString(), "agents", version.toString())
-
-    pom {
-        name = "Predictable Agents"
-        description = "Kotlin Multiplatform library for building AI agents with tool use and OpenAI support."
-        inceptionYear = "2025"
-        url = "https://github.com/predictable-machines/predictable-agents"
-        licenses {
-            license {
-                name = "Apache License, Version 2.0"
-                url = "https://www.apache.org/licenses/LICENSE-2.0"
-            }
-        }
-        developers {
-            developer {
-                id = "predictable-machines"
-                name = "Predictable Machines"
-                url = "https://github.com/predictable-machines"
-            }
-        }
-        scm {
-            url = "https://github.com/predictable-machines/predictable-agents"
-            connection = "scm:git:https://github.com/predictable-machines/predictable-agents.git"
-            developerConnection = "scm:git:ssh://git@github.com/predictable-machines/predictable-agents.git"
-        }
-    }
-}
+mavenPublishing { coordinates(group.toString(), "agents", version.toString()) }
