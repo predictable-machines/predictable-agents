@@ -1,0 +1,13 @@
+*.gpg
+*.iml
+.cxx
+.DS_Store
+.externalNativeBuild
+.gradle
+.idea/
+.kotlin
+bin
+build/
+captures
+local.properties
+xcuserdata
