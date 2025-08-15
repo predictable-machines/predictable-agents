@@ -21,11 +21,6 @@ interface AI<in A, out B> {
         this@unaryPlus(input)
       }
 
-    inline operator fun <reified A, reified B, reified C> (suspend (A, B) -> C).unaryPlus(): AI<Pair<A, B>, C> =
-      Tool { (a: A, b: B) ->
-        this@unaryPlus(a, b)
-      }
-
     inline fun <reified A, reified B> name(): String {
       val input = typeNameToIdentifier<A>()
       val output = typeNameToIdentifier<B>()

@@ -1,19 +1,16 @@
 package predictable
 
 import kotlinx.coroutines.flow.Flow
-import predictable.agent.AgentResponse
-import predictable.agent.Message
-import predictable.agent.StreamResponse
 import kotlinx.coroutines.flow.toList
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import predictable.TestUtils.workflowWithEmptyState
+import predictable.agent.Model
+import predictable.agent.StreamResponse
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import predictable.TestUtils.workflowWithEmptyState
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import predictable.agent.AgentInput
-import predictable.agent.Model
 
 // Define simple data classes for structured output testing
 @Serializable

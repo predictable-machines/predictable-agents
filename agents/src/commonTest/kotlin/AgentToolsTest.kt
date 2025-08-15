@@ -1,16 +1,15 @@
 package predictable
 
-import predictable.TestUtils.workflowWithEmptyState
-import predictable.agent.StreamResponse
 import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.Serializable
+import predictable.AI.Companion.unaryPlus
+import predictable.TestUtils.workflowWithEmptyState
+import predictable.agent.Model
+import predictable.agent.StreamResponse
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import predictable.*
-import predictable.AI.Companion.unaryPlus
-import predictable.agent.Model
 
 enum class Operation {
     ADD,
