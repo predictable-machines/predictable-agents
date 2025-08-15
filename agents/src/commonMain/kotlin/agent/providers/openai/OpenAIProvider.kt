@@ -9,8 +9,6 @@ import predictable.AI
 import predictable.agent.AgentResponse
 import predictable.agent.Message
 import predictable.agent.RequestParameters
-import predictable.agent.StreamResponse
-import kotlinx.coroutines.flow.Flow
 import predictable.agent.Model
 import predictable.tool.ToolCallback
 import predictable.tool.OutputSchema
@@ -39,7 +37,7 @@ class OpenAIProvider(
     tools: List<AI<*, *>>,
     parameters: RequestParameters,
     toolCallBack: ToolCallback?
-  ): AgentResponse.Simple {
+  ): AgentResponse.Text {
     val modelId = ModelId(model.name)
     val request = buildChatCompletionRequest(
       modelId = modelId,
@@ -53,7 +51,7 @@ class OpenAIProvider(
     val finalResponse = handleToolCalls<Nothing>(openAI, tools, messages.toMutableList(), response, null, parameters, toolCallBack)
     // Create metadata from the response
     val metadata = createAgentMetadata(finalResponse.usage, modelId)
-    return AgentResponse.Simple(
+    return AgentResponse.Text(
       value = finalResponse.choices.first().message.content.orEmpty(),
       metadata = metadata,
       messages = listOfNotNull(finalResponse.choices.firstOrNull()?.message?.let {
@@ -145,12 +143,13 @@ class OpenAIProvider(
     tools: List<AI<*, *>>,
     parameters: RequestParameters,
     toolCallBack: ToolCallback?
-  ): Flow<StreamResponse<String>> {
+  ): AgentResponse.StringStream {
     val modelId = ModelId(model.name)
     val chatMessages = messages.toOpenAIChatMessages()
     val request = buildChatCompletionRequest(modelId, chatMessages, tools, null, parameters)
     val state = StreamingState(request = request, messages = messages.toMutableList(), tools = tools, toolCallBack = toolCallBack)
-    return stringStreamResponseFlow(openAI, request, model, state, parameters)
+    val stream = stringStreamResponseFlow(openAI, request, model, state, parameters)
+    return AgentResponse.StringStream(value = stream)
   }
 
   /**
@@ -163,12 +162,14 @@ class OpenAIProvider(
     schema: OutputSchema<T>,
     parameters: RequestParameters,
     toolCallBack: ToolCallback?
-  ): Flow<StreamResponse<T>> {
+  ): AgentResponse.StructuredStream<T> {
     val modelId = ModelId(model.name)
     val chatMessages = messages.toOpenAIChatMessages()
     val elementsSchema = schema.elementsSchema()
     val request = buildChatCompletionRequest(modelId, chatMessages, tools, elementsSchema, parameters)
     val state = StreamingState(request = request, messages = messages.toMutableList(), tools = tools, toolCallBack = toolCallBack)
-    return structuredStreamResponseFlow(openAI, request, model, schema, state, parameters)
+    return AgentResponse.StructuredStream(
+      structuredStreamResponseFlow(openAI, request, model, schema, state, parameters)
+    )
   }
 }

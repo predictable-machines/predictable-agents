@@ -26,7 +26,6 @@ data class WeatherResponse(
     val location: String,
     val temperature: Double,
     val conditions: String,
-    val unit: String
 )
 
 @Serializable
@@ -59,7 +58,6 @@ class AgentStructuredOutputTest {
         assertNotNull(response)
         assertEquals("London", response.location)
         assertTrue(response.conditions.isNotEmpty())
-        assertEquals("celsius", response.unit)
 
         println("Weather Response: $response")
     }

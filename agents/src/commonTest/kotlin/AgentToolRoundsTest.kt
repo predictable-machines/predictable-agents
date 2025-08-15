@@ -33,9 +33,9 @@ data class RandomGeneratorInput(val name: String)
 @Serializable
 data class RandomGeneratorOutput(val randomNumber: Int)
 
-val randomGeneratorTool = AI(
-    name = "RandomGenerator",
-    description = "Generates a random number.",
+val randomGeneratorTool = Tool(
+  name = "RandomGenerator",
+  description = "Generates a random number.",
 ) { input: RandomGeneratorInput ->
     randomGeneratorToolCount++
     RandomGeneratorOutput((0..100).random())
@@ -62,14 +62,14 @@ fun multiStepGetWeather(input: MultiStepWeatherInput): String {
 }
 
 // Create tools for testing
-val multiStepCalculatorTool = AI(
-    name = "Calculator",
-    description = "A simple calculator that can add, subtract, multiply, and divide two numbers."
+val multiStepCalculatorTool = Tool(
+  name = "Calculator",
+  description = "A simple calculator that can add, subtract, multiply, and divide two numbers."
 ) { input: MultiStepCalculatorInput -> multiStepCalculateResult(input) }
 
-val multiStepWeatherTool = AI(
-    name = "Weather",
-    description = "Get the current weather for a location."
+val multiStepWeatherTool = Tool(
+  name = "Weather",
+  description = "Get the current weather for a location."
 ) { input: MultiStepWeatherInput -> multiStepGetWeather(input) }
 
 class AgentToolRoundsTest {

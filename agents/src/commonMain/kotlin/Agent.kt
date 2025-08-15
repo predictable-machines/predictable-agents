@@ -4,7 +4,6 @@ package predictable
 
 import dev.scottpierce.envvar.EnvVar
 import kotlinx.coroutines.flow.Flow
-import kotlinx.serialization.json.JsonElement
 import predictable.agent.*
 import predictable.agent.providers.openai.OpenAIProvider
 import predictable.tool.InputSchema
@@ -41,78 +40,55 @@ class Agent(
     )
   }
 
-  val generateText: AI<String, String> =
-    AI { invoke(it) }
+  inline operator fun <reified I, reified O> invoke() : Tool<I, O> =
+    Tool(
+      name = name,
+      description = description,
+      schema = KotlinSchema<I, O>(),
+      id = Uuid.random().toString()
+    ) { input: I ->
+      structured(AgentInput.Structured(input, KotlinSchema<I, O>(), parameters), KotlinSchema<I, O>()).value
+    }
 
-  val streamText: AI<String, Flow<StreamResponse<String>>> =
-    AI { stream(it) }
+  val streamText: Tool<String, Flow<StreamResponse<String>>> =
+    Tool { stream(it) }
 
-  inline fun <reified I, reified O> generateObject(requestParameters: RequestParameters = parameters): AI<I, O> = AI {
-    val schema = KotlinSchema<I, O>()
-    structured(AgentInput.Structured(it, schema, requestParameters), schema).value
-  }
+  inline fun <reified I, reified O> generateObject(requestParameters: RequestParameters = parameters): Tool<I, O> =
+    Tool {
+      val schema = KotlinSchema<I, O>()
+      structured(AgentInput.Structured(it, schema, requestParameters), schema).value
+    }
 
   suspend inline fun <reified I, reified O> generateObject(input: I, requestParameters: RequestParameters = parameters): O =
     generateObject<I, O>(requestParameters).invoke(input)
 
-  inline fun <reified I, reified O> streamObject(requestParameters: RequestParameters = parameters): AI<I, Flow<StreamResponse<O>>> =
-    AI {
+  inline fun <reified I, reified O> streamObject(requestParameters: RequestParameters = parameters): Tool<I, Flow<StreamResponse<O>>> =
+    Tool {
       val schema = KotlinSchema<I, O>()
-      structuredStream(AgentInput.Structured(it, schema, requestParameters), schema)
-    }
-
-  suspend fun generateJson(
-    request: RequestWithOutputSchema,
-    requestParameters: RequestParameters = request.parameters ?: parameters
-  ): JsonElement =
-    AI { input: List<Message> ->
-      val schema = KotlinSchema<List<Message>, JsonElement>()
-      structured(AgentInput.Structured(input, schema, requestParameters), request.outputSchema).value
-    }.invoke(request.messages)
-
-  fun streamJson(
-    request: RequestWithOutputSchema,
-    requestParameters: RequestParameters = request.parameters ?: parameters
-  ): AI<List<Message>, Flow<StreamResponse<JsonElement>>> =
-    AI {
-      val schema = KotlinSchema<List<Message>, JsonElement>()
-      structuredStream(AgentInput.Structured(it, schema, requestParameters), request.outputSchema)
+      structuredStream(AgentInput.Structured(it, schema, requestParameters), schema).value
     }
 
   suspend inline fun <reified I, reified O> streamObject(input: I, requestParameters: RequestParameters = parameters): Flow<StreamResponse<O>> =
     streamObject<I, O>(requestParameters).invoke(input)
 
-  suspend inline fun streamJsonObject(
-    request: RequestWithOutputSchema
-  ): Flow<StreamResponse<JsonElement>> =
-    streamJson(request).invoke(request.messages)
-
   suspend operator fun invoke(input: String, requestParameters: RequestParameters = parameters): String =
-    stringOutput(AgentInput.Simple(input, requestParameters)).value
-
-  suspend operator fun invoke(input: Request, requestParameters: RequestParameters = parameters): Response =
-    stringOutput(AgentInput.Messages(input.messages, requestParameters)).let { response ->
-      Response(
-        messages = response.messages,
-        metadata = response.metadata
-      )
-    }
+    stringOutput(AgentInput.Text(input, requestParameters)).value
 
   suspend operator fun invoke(input: List<Message>, requestParameters: RequestParameters = parameters): String =
     stringOutput(AgentInput.Messages(input, requestParameters)).value
 
   fun stream(input: List<Message>, requestParameters: RequestParameters = parameters): Flow<StreamResponse<String>> =
-    stream(AgentInput.Messages(input, requestParameters))
+    stream(AgentInput.Messages(input, requestParameters)).value
 
   fun stream(input: String, requestParameters: RequestParameters = parameters): Flow<StreamResponse<String>> =
-    stream(AgentInput.Simple(input, requestParameters))
+    stream(AgentInput.Text(input, requestParameters)).value
 
   fun <T> stream(
     input: T,
     schema: InputSchema<T>,
     requestParameters: RequestParameters = parameters
   ): Flow<StreamResponse<String>> =
-    stream(AgentInput.Structured(input, schema, requestParameters))
+    stream(AgentInput.Structured(input, schema, requestParameters)).value
 
   inline fun <reified T, reified R> stream(
     input: T,
@@ -122,10 +98,10 @@ class Agent(
     return structuredStream(
       AgentInput.Structured(input, schema, requestParameters),
       schema
-    )
+    ).value
   }
 
-  fun stream(input: AgentInput): Flow<StreamResponse<String>> =
+  fun stream(input: AgentInput): AgentResponse.StringStream =
     provider.chatCompletionStream(
       messages = messages(input),
       model = model,
@@ -134,7 +110,7 @@ class Agent(
       toolCallBack = toolCallBack
     )
 
-  private suspend fun stringOutput(input: AgentInput): AgentResponse.Simple =
+  private suspend fun stringOutput(input: AgentInput): AgentResponse.Text =
     provider.chatCompletion(
       messages = messages(input),
       model = model,
@@ -146,7 +122,7 @@ class Agent(
   fun <T> structuredStream(
     input: AgentInput,
     schema: OutputSchema<T>
-  ): Flow<StreamResponse<T>> =
+  ): AgentResponse.StructuredStream<T> =
     provider.chatCompletionStructuredStream(
       messages = messages(input),
       model = model,
@@ -169,7 +145,7 @@ class Agent(
   private fun messages(input: AgentInput): List<Message> {
     val conversation = when (input) {
       is AgentInput.Messages -> input.value
-      is AgentInput.Simple -> listOf(
+      is AgentInput.Text -> listOf(
         Message.user(input.value)
       )
 

@@ -15,7 +15,7 @@ class AgentToolCrashTest {
   @Serializable
   data class ToolOutput(val result: String)
 
-  val tool = AI<ToolInput, ToolOutput>(
+  val tool = Tool<ToolInput, ToolOutput>(
     name = "TestTool",
   ) {
     throw IllegalStateException("Tool error")
