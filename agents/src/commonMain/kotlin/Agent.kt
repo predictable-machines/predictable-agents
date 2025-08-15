@@ -50,9 +50,6 @@ class Agent(
       structured(AgentInput.Structured(input, KotlinSchema<I, O>(), parameters), KotlinSchema<I, O>()).value
     }
 
-  val streamText: Tool<String, Flow<StreamResponse<String>>> =
-    Tool { stream(it) }
-
   inline fun <reified I, reified O> generateObject(requestParameters: RequestParameters = parameters): Tool<I, O> =
     Tool {
       val schema = KotlinSchema<I, O>()

@@ -97,7 +97,7 @@ class AgentToolsTest {
         lastCalculatorInput = null
 
         // Test the stream method with a prompt that should trigger the calculator tool
-        val streamResponses = testAgentWithTools.streamText("What is 5 plus 3?").toList()
+        val streamResponses = testAgentWithTools.stream("What is 5 plus 3?").toList()
 
         // Verify that we got some responses
         assertTrue(streamResponses.isNotEmpty(), "Stream responses should not be empty")
