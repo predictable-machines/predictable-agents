@@ -1,16 +1,15 @@
 package predictable
 
-import predictable.TestUtils.workflowWithEmptyState
-import predictable.agent.StreamResponse
 import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.Serializable
+import predictable.AI.Companion.unaryPlus
+import predictable.TestUtils.workflowWithEmptyState
+import predictable.agent.Model
+import predictable.agent.StreamResponse
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import predictable.*
-import predictable.AI.Companion.unaryPlus
-import predictable.agent.Model
 
 enum class Operation {
     ADD,
@@ -60,7 +59,7 @@ suspend fun getWeather(input: WeatherInput): String {
 class AgentToolsTest {
 
     // Create an agent with tools for testing
-    private val testAgentWithTools = agent(
+    private val testAgentWithTools = Agent(
         name = "Test Agent With Tools",
         description = "A test agent with tools for unit tests",
         system = "You are a helpful assistant for testing purposes. Use the tools when appropriate.",
@@ -97,7 +96,7 @@ class AgentToolsTest {
         lastCalculatorInput = null
 
         // Test the stream method with a prompt that should trigger the calculator tool
-        val streamResponses = testAgentWithTools.streamText("What is 5 plus 3?").toList()
+        val streamResponses = testAgentWithTools.stream("What is 5 plus 3?").toList()
 
         // Verify that we got some responses
         assertTrue(streamResponses.isNotEmpty(), "Stream responses should not be empty")

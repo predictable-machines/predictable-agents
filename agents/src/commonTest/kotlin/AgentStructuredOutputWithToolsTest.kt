@@ -1,8 +1,6 @@
 package predictable
 
 import com.xemantic.ai.tool.schema.meta.Description
-import predictable.agent.AgentResponse
-import predictable.agent.Message
 import predictable.agent.StreamResponse
 import kotlinx.coroutines.flow.toList
 import kotlin.test.Test
@@ -13,7 +11,6 @@ import predictable.TestUtils.workflowWithEmptyState
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import predictable.agent.Model
 
 // Define data classes for structured output with tools testing
@@ -85,14 +82,14 @@ fun getWeatherInCombinedTest(input: WeatherInput): String {
 }
 
 // Create tools for combined testing
-val calculatorToolForCombinedTest = AI(
-    name = "Calculator",
-    description = "A simple calculator that can add, subtract, multiply, and divide two numbers."
+val calculatorToolForCombinedTest = Tool(
+  name = "Calculator",
+  description = "A simple calculator that can add, subtract, multiply, and divide two numbers."
 ) { input: CalculatorInput -> calculateResultInCombinedTest(input) }
 
-val weatherToolForCombinedTest = AI(
-    name = "Weather",
-    description = "Get the current weather for a location."
+val weatherToolForCombinedTest = Tool(
+  name = "Weather",
+  description = "Get the current weather for a location."
 ) { input: WeatherInput -> getWeatherInCombinedTest(input) }
 
 /**
@@ -107,7 +104,7 @@ val weatherToolForCombinedTest = AI(
 class AgentStructuredOutputWithToolsTest {
 
     // Create an agent with tools for testing structured output
-    private val testAgentWithTools = agent(
+    private val testAgentWithTools = Agent(
         name = "Structured Output With Tools Test Agent",
         description = "A test agent for structured output with tools unit tests",
         system = "You are a helpful assistant for testing structured output with tools. Use the tools when appropriate and respond with the exact structured requested in JSON format.",

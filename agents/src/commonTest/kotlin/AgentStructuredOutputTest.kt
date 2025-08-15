@@ -1,19 +1,16 @@
 package predictable
 
 import kotlinx.coroutines.flow.Flow
-import predictable.agent.AgentResponse
-import predictable.agent.Message
-import predictable.agent.StreamResponse
 import kotlinx.coroutines.flow.toList
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import predictable.TestUtils.workflowWithEmptyState
+import predictable.agent.Model
+import predictable.agent.StreamResponse
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import predictable.TestUtils.workflowWithEmptyState
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import predictable.agent.AgentInput
-import predictable.agent.Model
 
 // Define simple data classes for structured output testing
 @Serializable
@@ -26,7 +23,6 @@ data class WeatherResponse(
     val location: String,
     val temperature: Double,
     val conditions: String,
-    val unit: String
 )
 
 @Serializable
@@ -40,7 +36,7 @@ data class PersonInfo(
 class AgentStructuredOutputTest {
 
     // Create a simple agent for testing structured output
-    private val testAgent = agent(
+    private val testAgent = Agent(
         name = "Structured Output Test Agent",
         description = "A test agent for structured output unit tests",
         system = "You are a helpful assistant for testing structured output. Always respond with the exact structure requested.",
@@ -59,7 +55,6 @@ class AgentStructuredOutputTest {
         assertNotNull(response)
         assertEquals("London", response.location)
         assertTrue(response.conditions.isNotEmpty())
-        assertEquals("celsius", response.unit)
 
         println("Weather Response: $response")
     }

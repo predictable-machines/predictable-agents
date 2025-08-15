@@ -33,9 +33,9 @@ data class RandomGeneratorInput(val name: String)
 @Serializable
 data class RandomGeneratorOutput(val randomNumber: Int)
 
-val randomGeneratorTool = AI(
-    name = "RandomGenerator",
-    description = "Generates a random number.",
+val randomGeneratorTool = Tool(
+  name = "RandomGenerator",
+  description = "Generates a random number.",
 ) { input: RandomGeneratorInput ->
     randomGeneratorToolCount++
     RandomGeneratorOutput((0..100).random())
@@ -62,20 +62,20 @@ fun multiStepGetWeather(input: MultiStepWeatherInput): String {
 }
 
 // Create tools for testing
-val multiStepCalculatorTool = AI(
-    name = "Calculator",
-    description = "A simple calculator that can add, subtract, multiply, and divide two numbers."
+val multiStepCalculatorTool = Tool(
+  name = "Calculator",
+  description = "A simple calculator that can add, subtract, multiply, and divide two numbers."
 ) { input: MultiStepCalculatorInput -> multiStepCalculateResult(input) }
 
-val multiStepWeatherTool = AI(
-    name = "Weather",
-    description = "Get the current weather for a location."
+val multiStepWeatherTool = Tool(
+  name = "Weather",
+  description = "Get the current weather for a location."
 ) { input: MultiStepWeatherInput -> multiStepGetWeather(input) }
 
 class AgentToolRoundsTest {
 
     // Create an agent with tools for testing
-    private val testAgentWithTools = agent(
+    private val testAgentWithTools = Agent(
         name = "Test Agent With Tools",
         description = "A test agent with tools for unit tests",
         system = "You are a helpful assistant for testing purposes. Use the tools when appropriate.",
@@ -118,7 +118,7 @@ class AgentToolRoundsTest {
         randomGeneratorToolCount = 0
 
         // Create a new agent with a low maxSteps value to limit the number of rounds
-        val agentWithLimitedSteps: Agent = agent(
+        val agentWithLimitedSteps: Agent = Agent(
             name = "Test Agent With Limited Steps",
             description = "A test agent with tools for unit tests and limited steps",
             system = "You are a helpful assistant for testing purposes. Use the tools when appropriate.",

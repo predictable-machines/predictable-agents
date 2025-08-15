@@ -15,14 +15,14 @@ class AgentToolCrashTest {
   @Serializable
   data class ToolOutput(val result: String)
 
-  val tool = AI<ToolInput, ToolOutput>(
+  val tool = Tool<ToolInput, ToolOutput>(
     name = "TestTool",
   ) {
     throw IllegalStateException("Tool error")
   }
 
   // Create a simple agent for testing
-  private val testAgent = agent(
+  private val testAgent = Agent(
     name = "Test Agent",
     description = "A test agent for unit tests",
     system = "You are a helpful assistant for testing purposes",
