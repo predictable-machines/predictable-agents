@@ -39,7 +39,7 @@ data class PersonInfo(
 class AgentStructuredOutputTest {
 
     // Create a simple agent for testing structured output
-    private val testAgent = agent(
+    private val testAgent = Agent(
         name = "Structured Output Test Agent",
         description = "A test agent for structured output unit tests",
         system = "You are a helpful assistant for testing structured output. Always respond with the exact structure requested.",

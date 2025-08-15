@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 class AgentTest {
 
   // Create a simple agent for testing
-  private val testAgent = agent(
+  private val testAgent = Agent(
     name = "Test Agent",
     description = "A test agent for unit tests",
     system = "You are a helpful assistant for testing purposes. Keep your answers short and concise.",

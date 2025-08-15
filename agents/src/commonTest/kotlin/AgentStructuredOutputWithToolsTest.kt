@@ -104,7 +104,7 @@ val weatherToolForCombinedTest = Tool(
 class AgentStructuredOutputWithToolsTest {
 
     // Create an agent with tools for testing structured output
-    private val testAgentWithTools = agent(
+    private val testAgentWithTools = Agent(
         name = "Structured Output With Tools Test Agent",
         description = "A test agent for structured output with tools unit tests",
         system = "You are a helpful assistant for testing structured output with tools. Use the tools when appropriate and respond with the exact structured requested in JSON format.",

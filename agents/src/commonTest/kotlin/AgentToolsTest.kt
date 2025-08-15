@@ -60,7 +60,7 @@ suspend fun getWeather(input: WeatherInput): String {
 class AgentToolsTest {
 
     // Create an agent with tools for testing
-    private val testAgentWithTools = agent(
+    private val testAgentWithTools = Agent(
         name = "Test Agent With Tools",
         description = "A test agent with tools for unit tests",
         system = "You are a helpful assistant for testing purposes. Use the tools when appropriate.",

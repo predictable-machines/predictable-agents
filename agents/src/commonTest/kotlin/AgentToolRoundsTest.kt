@@ -75,7 +75,7 @@ val multiStepWeatherTool = Tool(
 class AgentToolRoundsTest {
 
     // Create an agent with tools for testing
-    private val testAgentWithTools = agent(
+    private val testAgentWithTools = Agent(
         name = "Test Agent With Tools",
         description = "A test agent with tools for unit tests",
         system = "You are a helpful assistant for testing purposes. Use the tools when appropriate.",
@@ -118,7 +118,7 @@ class AgentToolRoundsTest {
         randomGeneratorToolCount = 0
 
         // Create a new agent with a low maxSteps value to limit the number of rounds
-        val agentWithLimitedSteps: Agent = agent(
+        val agentWithLimitedSteps: Agent = Agent(
             name = "Test Agent With Limited Steps",
             description = "A test agent with tools for unit tests and limited steps",
             system = "You are a helpful assistant for testing purposes. Use the tools when appropriate.",

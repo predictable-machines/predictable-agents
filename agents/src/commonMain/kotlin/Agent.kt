@@ -14,15 +14,15 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class Agent(
-  val id: String,
   val name: String,
   val description: String,
   val system: String,
   val model: Model,
-  val tools: List<AI<*, *>>,
+  val id: String = Uuid.random().toString(),
+  val tools: List<AI<*, *>> = emptyList(),
   val apiKey: String = "",
   val toolCallBack: ToolCallback? = null,
-  val parameters: RequestParameters
+  val parameters: RequestParameters = RequestParameters.default
 ) {
 
   private val provider: OpenAIProvider by lazy {
@@ -158,24 +158,3 @@ class Agent(
   }
 }
 
-fun agent(
-  name: String,
-  description: String,
-  system: String,
-  model: Model,
-  id: String = Uuid.random().toString(),
-  tools: List<AI<*, *>> = emptyList(),
-  toolCallback: ToolCallback? = null,
-  apiKey: String = "",
-  parameters: RequestParameters = RequestParameters.default
-): Agent = Agent(
-  name = name,
-  description = description,
-  system = system,
-  model = model,
-  tools = tools,
-  apiKey = apiKey,
-  id = id,
-  parameters = parameters,
-  toolCallBack = toolCallback
-)
