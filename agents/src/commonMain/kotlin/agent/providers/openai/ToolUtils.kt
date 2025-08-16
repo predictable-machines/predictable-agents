@@ -23,9 +23,18 @@ import predictable.tool.ToolCallResponse
 private val logger = KotlinLogging.logger {}
 
 /**
+ * Result of handling tool calls, containing the final response and accumulated usage.
+ */
+data class ToolCallResult(
+  val response: ChatCompletion,
+  val accumulatedUsage: AccumulatedUsage
+)
+
+/**
  * Handles tool calls in a chat completion response
  *
  * @param currentStep The current step count, used to track and limit the number of tool call iterations
+ * @param accumulatedUsage Accumulates usage statistics across all tool call rounds
  */
 suspend fun <T> handleToolCalls(
   openAI: OpenAI,
@@ -35,14 +44,19 @@ suspend fun <T> handleToolCalls(
   schema: OutputSchema<T>?,
   parameters: RequestParameters,
   toolCallback: ToolCallback?,
-  currentStep: Int = 1
-): ChatCompletion {
+  currentStep: Int = 1,
+  accumulatedUsage: AccumulatedUsage = AccumulatedUsage()
+): ToolCallResult {
   val responseMessage = response.choices.first().message
   val finishReason = response.choices.first().finishReason
+
+  // Add the current response's usage to accumulated usage (returns new instance)
+  val updatedUsage = accumulatedUsage + response.usage
 
   logger.debug { "handleToolCalls: currentStep=$currentStep, maxSteps=${parameters.maxSteps}, finishReason=$finishReason" }
   logger.debug { "handleToolCalls: responseMessage.toolCalls=${responseMessage.toolCalls}" }
   logger.debug { "handleToolCalls: responseMessage.content=${responseMessage.content}" }
+  logger.debug { "handleToolCalls: accumulated usage so far: prompt=${updatedUsage.promptTokens}, completion=${updatedUsage.completionTokens}, total=${updatedUsage.totalTokens}" }
 
   // Check if we've reached the maximum number of steps
   if (currentStep >= parameters.maxSteps) {
@@ -67,15 +81,18 @@ suspend fun <T> handleToolCalls(
     )
 
     val finalResponse = openAI.chatCompletion(finalRequest)
+    // Add final response usage to accumulated usage
+    val finalUsage = updatedUsage + finalResponse.usage
     logger.debug { "handleToolCalls: Final response content: ${finalResponse.choices.first().message.content}" }
+    logger.debug { "handleToolCalls: final accumulated usage: prompt=${finalUsage.promptTokens}, completion=${finalUsage.completionTokens}, total=${finalUsage.totalTokens}" }
 
-    return finalResponse
+    return ToolCallResult(finalResponse, finalUsage)
   }
 
   // Check if the finish reason indicates we should stop
   if (finishReason != null && finishReason != FinishReason.ToolCalls) {
     logger.debug { "handleToolCalls: Finish reason ($finishReason) indicates we should stop" }
-    return response
+    return ToolCallResult(response, updatedUsage)
   }
 
   return if (responseMessage.toolCalls != null && responseMessage.toolCalls!!.isNotEmpty()) {
@@ -96,13 +113,16 @@ suspend fun <T> handleToolCalls(
     // Check if the next response has tool calls and recursively handle them
     val nextResponseMessage = nextResponse.choices.first().message
     if (nextResponseMessage.toolCalls != null && nextResponseMessage.toolCalls!!.isNotEmpty()) {
-      // Recursively handle tool calls, incrementing the step counter
-      handleToolCalls(openAI, tools, messages, nextResponse, schema, parameters, toolCallback, currentStep + 1)
+      // Recursively handle tool calls, incrementing the step counter and passing accumulated usage
+      handleToolCalls(openAI, tools, messages, nextResponse, schema, parameters, toolCallback, currentStep + 1, updatedUsage)
     } else {
-      nextResponse
+      // Add the final response's usage before returning
+      val finalUsage = updatedUsage + nextResponse.usage
+      logger.debug { "handleToolCalls: final accumulated usage: prompt=${finalUsage.promptTokens}, completion=${finalUsage.completionTokens}, total=${finalUsage.totalTokens}" }
+      ToolCallResult(nextResponse, finalUsage)
     }
   } else {
-    response
+    ToolCallResult(response, updatedUsage)
   }
 }
 

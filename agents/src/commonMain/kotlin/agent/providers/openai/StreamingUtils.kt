@@ -37,13 +37,25 @@ fun <T> streamResponseFlow(
     logger.debug { "Streaming chunk: $chunk" }
     // Extract and emit tool calls if present
     emitToolCalls(chunk.choices.firstOrNull()?.delta, state, openAI, parameters)
-    emitMetadata(chunk, model)
+    emitMetadata(chunk, model, state)
     emitChunk(chunk, state)
     finishReason = chunk.choices.firstOrNull()?.finishReason
   }
 
   if (state.currentStep >= parameters.maxSteps && finishReason == FinishReason.ToolCalls) {
     logger.debug { "max steps reached" }
+    
+    // Emit intermediate metadata when max steps is reached (even if 0)
+    logger.debug { "Emitting intermediate metadata at max steps: prompt=${state.accumulatedUsage.promptTokens}, completion=${state.accumulatedUsage.completionTokens}, total=${state.accumulatedUsage.totalTokens}" }
+    emit(
+      StreamResponse.Metadata(
+        createAgentMetadata(
+          usage = state.accumulatedUsage.toUsage(),
+          modelId = ModelId(model.name),
+        )
+      )
+    )
+    
     val updatedRequest = request.copy(
       messages = (state.messages + (
         Message.system("I have to provide a final response without tool calls due to max steps reached")
@@ -64,6 +76,7 @@ fun <T> streamResponseFlow(
         toolCallsByIndex = mutableMapOf(),
         currentStep = state.currentStep + 1,
         toolCallBack = state.toolCallBack,
+        accumulatedUsage = state.accumulatedUsage
       ),
       parameters = parameters,
       lastFinishReason = finishReason,
@@ -76,6 +89,19 @@ fun <T> streamResponseFlow(
 
   if (finishReason == FinishReason.ToolCalls) {
     logger.debug { "Streaming finished with tool calls" }
+    
+    // Emit intermediate metadata after this round of tool calls
+    // This shows the accumulated usage up to this point (even if 0)
+    logger.debug { "Emitting intermediate metadata after tool calls: prompt=${state.accumulatedUsage.promptTokens}, completion=${state.accumulatedUsage.completionTokens}, total=${state.accumulatedUsage.totalTokens}" }
+    emit(
+      StreamResponse.Metadata(
+        createAgentMetadata(
+          usage = state.accumulatedUsage.toUsage(),
+          modelId = ModelId(model.name),
+        )
+      )
+    )
+    
     val updatedRequest = request.copy(
       messages = state.messages.map(::convertMessageToChatMessage),
     )
@@ -94,6 +120,7 @@ fun <T> streamResponseFlow(
         toolCallsByIndex = mutableMapOf(),
         currentStep = state.currentStep + 1,
         toolCallBack = state.toolCallBack,
+        accumulatedUsage = state.accumulatedUsage
       ),
       parameters = parameters,
       lastFinishReason = finishReason,
@@ -102,9 +129,20 @@ fun <T> streamResponseFlow(
       emit(chunk)
     }
   }
-  // Emit end marker
-  if (finishReason == FinishReason.Stop)
+  // Emit end marker and final metadata
+  if (finishReason == FinishReason.Stop) {
+    logger.debug { "Stream ending with Stop. Accumulated usage: prompt=${state.accumulatedUsage.promptTokens}, completion=${state.accumulatedUsage.completionTokens}, total=${state.accumulatedUsage.totalTokens}" }
+    // Always emit final metadata, even if usage is 0 (which shouldn't happen but let's be safe)
+    emit(
+      StreamResponse.Metadata(
+        createAgentMetadata(
+          usage = state.accumulatedUsage.toUsage(),
+          modelId = ModelId(model.name),
+        )
+      )
+    )
     emit(StreamResponse.End)
+  }
 }
 
 /**
@@ -159,22 +197,26 @@ suspend fun FlowCollector<StreamResponse<String>>.emitContent(
  */
 suspend fun <T> FlowCollector<StreamResponse<T>>.emitMetadata(
   chunk: ChatCompletionChunk,
-  model: Model
+  model: Model,
+  state: StreamingState
 ) {
   chunk.usage?.let { usage ->
-    val promptTokens = usage.promptTokens
-    val completionTokens = usage.completionTokens
-    val totalTokens = usage.totalTokens
-    if (promptTokens != null && completionTokens != null && totalTokens != null) {
-      emit(
-        StreamResponse.Metadata(
-          createAgentMetadata(
-            usage = usage,
-            modelId = ModelId(model.name),
-          )
+    // Update the state with new accumulated usage (immutable update)
+    val newAccumulatedUsage = state.accumulatedUsage + usage
+    state.accumulatedUsage = newAccumulatedUsage
+    
+    logger.debug { "Accumulated usage from chunk: prompt=${usage.promptTokens}, completion=${usage.completionTokens}, total=${usage.totalTokens}" }
+    logger.debug { "Total accumulated so far: prompt=${newAccumulatedUsage.promptTokens}, completion=${newAccumulatedUsage.completionTokens}, total=${newAccumulatedUsage.totalTokens}" }
+    
+    // Emit the accumulated metadata
+    emit(
+      StreamResponse.Metadata(
+        createAgentMetadata(
+          usage = newAccumulatedUsage.toUsage(),
+          modelId = ModelId(model.name),
         )
       )
-    }
+    )
   }
 }
 

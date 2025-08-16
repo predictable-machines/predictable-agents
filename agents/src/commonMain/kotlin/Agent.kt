@@ -74,6 +74,12 @@ class Agent(
   suspend operator fun invoke(input: List<Message>, requestParameters: RequestParameters = parameters): String =
     stringOutput(AgentInput.Messages(input, requestParameters)).value
 
+  suspend fun chat(input: String, requestParameters: RequestParameters = parameters): AgentResponse.Text =
+    stringOutput(AgentInput.Text(input, requestParameters))
+
+  suspend fun chat(input: List<Message>, requestParameters: RequestParameters = parameters): AgentResponse.Text =
+    stringOutput(AgentInput.Messages(input, requestParameters))
+
   fun stream(input: List<Message>, requestParameters: RequestParameters = parameters): Flow<StreamResponse<String>> =
     stream(AgentInput.Messages(input, requestParameters)).value
 

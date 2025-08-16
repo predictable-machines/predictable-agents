@@ -30,5 +30,7 @@ data class StreamingState(
   val toolCallFunctionNames: MutableMap<String, String> = mutableMapOf(),
   // Current step count for tracking tool call iterations
   var currentStep: Int = 1,
-  val toolCallBack: ToolCallback?
+  val toolCallBack: ToolCallback?,
+  // Accumulated usage across all streaming responses and tool calls
+  var accumulatedUsage: AccumulatedUsage = AccumulatedUsage()
 )
