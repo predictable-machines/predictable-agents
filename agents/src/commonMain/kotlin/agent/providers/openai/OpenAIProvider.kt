@@ -48,13 +48,13 @@ class OpenAIProvider(
     )
     val response = openAI.chatCompletion(request)
     // If there were tool calls, make a second request to get the final response
-    val finalResponse = handleToolCalls<Nothing>(openAI, tools, messages.toMutableList(), response, null, parameters, toolCallBack)
-    // Create metadata from the response
-    val metadata = createAgentMetadata(finalResponse.usage, modelId)
+    val toolCallResult = handleToolCalls<Nothing>(openAI, tools, messages.toMutableList(), response, null, parameters, toolCallBack)
+    // Create metadata from the accumulated usage
+    val metadata = createAgentMetadata(toolCallResult.accumulatedUsage.toUsage(), modelId)
     return AgentResponse.Text(
-      value = finalResponse.choices.first().message.content.orEmpty(),
+      value = toolCallResult.response.choices.first().message.content.orEmpty(),
       metadata = metadata,
-      messages = listOfNotNull(finalResponse.choices.firstOrNull()?.message?.let {
+      messages = listOfNotNull(toolCallResult.response.choices.firstOrNull()?.message?.let {
         convertChatMessageToMessage(it)
       })
     )
@@ -82,12 +82,11 @@ class OpenAIProvider(
     )
     val response = openAI.chatCompletion(request)
     // If there were tool calls, make a second request to get the final response
-    val finalResponse = handleToolCalls(openAI, tools, messages.toMutableList(), response, schema, parameters, toolCallBack)
-    // Create metadata from the response
-    //TODO we need to accumulate usage from all inner responses
-    val metadata = createAgentMetadata(finalResponse.usage, modelId)
+    val toolCallResult = handleToolCalls(openAI, tools, messages.toMutableList(), response, schema, parameters, toolCallBack)
+    // Create metadata from the accumulated usage
+    val metadata = createAgentMetadata(toolCallResult.accumulatedUsage.toUsage(), modelId)
     val buffer = StringBuilder()
-    val content = finalResponse.choices.first().message.content
+    val content = toolCallResult.response.choices.first().message.content
     var element: T? = null
     // First attempt to parse the JSON
 
@@ -128,7 +127,7 @@ class OpenAIProvider(
     return AgentResponse.Structured<T>(
       value = element,
       metadata = metadata,
-      messages = listOfNotNull(finalResponse.choices.firstOrNull()?.message?.let {
+      messages = listOfNotNull(toolCallResult.response.choices.firstOrNull()?.message?.let {
         convertChatMessageToMessage(it)
       })
     )
