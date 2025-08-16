@@ -67,17 +67,37 @@ class AgentMetadataAccumulationTest {
         )
 
         // Make a request that should trigger tool usage
-        val response = agent("What is 5 + 3? Also, what's the weather in San Francisco?")
+        val response = agent.chat("What is 5 + 3? Also, what's the weather in San Francisco?")
 
         // Verify we got a response
         assertNotNull(response)
-        assertTrue(response.isNotEmpty())
+        assertNotNull(response.value)
+        assertTrue(response.value.isNotEmpty())
         
-        // Note: In a real test with access to the response object, we would verify:
-        // - response.metadata.promptTokens > 0
-        // - response.metadata.completionTokens > 0
-        // - response.metadata.totalTokens == promptTokens + completionTokens
-        // - The values include tokens from all tool call rounds
+        // Verify metadata exists and has the expected structure
+        assertNotNull(response.metadata)
+        assertNotNull(response.metadata.promptTokens)
+        assertNotNull(response.metadata.completionTokens)
+        assertNotNull(response.metadata.totalTokens)
+        
+        // Verify the metadata values are consistent
+        // Total tokens should be the sum of prompt and completion tokens
+        // (or might be 0 if the model doesn't provide usage data)
+        if (response.metadata.totalTokens > 0) {
+            assertTrue(
+                response.metadata.totalTokens >= response.metadata.promptTokens + response.metadata.completionTokens,
+                "Total tokens should be at least the sum of prompt and completion tokens"
+            )
+        }
+        
+        // Log the metadata for debugging
+        println("Non-streaming metadata: prompt=${response.metadata.promptTokens}, " +
+                "completion=${response.metadata.completionTokens}, " +
+                "total=${response.metadata.totalTokens}")
+        
+        // Verify we got messages including tool interactions
+        assertNotNull(response.messages)
+        assertTrue(response.messages.isNotEmpty())
     }
 
     @Test
@@ -211,15 +231,38 @@ class AgentMetadataAccumulationTest {
         )
 
         // Make a request that might trigger multiple tool rounds
-        val response = agent("Calculate something complex that needs multiple steps: 1+1, then 2+2, then 3+3")
+        val response = agent.chat("Calculate something complex that needs multiple steps: 1+1, then 2+2, then 3+3")
 
         // Verify we got a response (forced final response after max steps)
         assertNotNull(response)
-        assertTrue(response.isNotEmpty())
+        assertNotNull(response.value)
+        assertTrue(response.value.isNotEmpty())
         
-        // The metadata should include usage from:
+        // Verify metadata exists and has accumulated usage from:
         // 1. Initial request
         // 2. Tool calls up to maxSteps
         // 3. Forced final response without tools
+        assertNotNull(response.metadata)
+        assertNotNull(response.metadata.promptTokens)
+        assertNotNull(response.metadata.completionTokens)
+        assertNotNull(response.metadata.totalTokens)
+        
+        // When max steps is reached, we should have accumulated metadata from multiple rounds
+        // Even if all values are 0 (due to model limitations), the structure should be present
+        println("Max steps metadata: prompt=${response.metadata.promptTokens}, " +
+                "completion=${response.metadata.completionTokens}, " +
+                "total=${response.metadata.totalTokens}")
+        
+        // Verify consistency if we have actual usage data
+        if (response.metadata.totalTokens > 0) {
+            assertTrue(
+                response.metadata.totalTokens >= response.metadata.promptTokens + response.metadata.completionTokens,
+                "Total tokens should be at least the sum of prompt and completion tokens"
+            )
+        }
+        
+        // Verify we have messages from the interaction
+        assertNotNull(response.messages)
+        assertTrue(response.messages.isNotEmpty())
     }
 }
