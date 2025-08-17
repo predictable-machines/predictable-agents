@@ -46,6 +46,14 @@ kotlin {
         }
 
         jvmMain { dependencies { implementation(libs.kotlin.reflect) } }
+        
+        jvmTest {
+            dependencies {
+                implementation(project(":mcp"))
+                implementation(libs.ktor.server.core)
+                implementation(libs.ktor.server.cio)
+            }
+        }
         // Configure WASM JS source sets
         wasmJsMain { dependencies { implementation(libs.ktor.client.js) } }
     }
@@ -114,7 +122,7 @@ val extractReadmeSnippets = tasks.register<com.predictable.machines.build.logic.
 kotlin {
     @Suppress("UNUSED_VARIABLE")
     sourceSets {
-        val commonTest by getting {
+        val jvmTest by getting {
             kotlin.srcDir(layout.buildDirectory.dir("readme-snippets"))
         }
     }

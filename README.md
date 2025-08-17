@@ -506,6 +506,178 @@ suspend fun useDynamicSupervisor() {
 }
 ```
 
+## Model Context Protocol (MCP) Support
+
+The MCP module enables you to expose your AI agents and tools through the [Model Context Protocol](https://modelcontextprotocol.io/), allowing them to be consumed by any MCP-compatible client.
+
+### Quick Start with MCP Server
+
+```kotlin
+import predictable.Tool
+import predictable.mcp.server.startKtorMCPServer
+import predictable.tool.KotlinSchema
+import kotlinx.serialization.Serializable
+import kotlinx.coroutines.runBlocking
+
+// Define your tool's input/output types
+@Serializable
+data class TranslationInput(val text: String, val targetLanguage: String)
+
+@Serializable
+data class TranslationOutput(val translatedText: String, val sourceLanguage: String)
+
+fun main() = runBlocking {
+    // Create tools to expose via MCP
+    val translator = Tool(
+        name = "translator",
+        description = "Translates text to different languages",
+        schema = KotlinSchema(
+            TranslationInput.serializer(),
+            TranslationOutput.serializer()
+        )
+    ) { input ->
+        // Your translation logic here
+        TranslationOutput(
+            translatedText = "Translated: ${input.text}",
+            sourceLanguage = "auto-detected"
+        )
+    }
+    
+    // Start the MCP server with your tools
+    val server = startKtorMCPServer(
+        tools = listOf(translator),
+        port = 8080,
+        host = "0.0.0.0"
+    )
+    
+    println("MCP Server running at http://localhost:8080/sse")
+    println("Connect with any MCP client to use the tools")
+    
+    server.start(wait = true)
+}
+```
+
+### Using MCP with Existing Ktor Applications
+
+```kotlin
+import io.ktor.server.application.*
+import predictable.mcp.server.configureMCP
+import predictable.Tool
+import predictable.tool.KotlinSchema
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class Input(val text: String)
+
+@Serializable  
+data class Output(val result: String)
+
+fun Application.module() {
+    // Your existing Ktor configuration
+    
+    // Create your tools
+    val translatorTool = Tool(
+        name = "translator",
+        description = "Translates text",
+        schema = KotlinSchema(Input.serializer(), Output.serializer())
+    ) { input -> Output("Translated: ${input.text}") }
+    
+    val calculatorTool = Tool(
+        name = "calculator", 
+        description = "Calculates results",
+        schema = KotlinSchema(Input.serializer(), Output.serializer())
+    ) { input -> Output("Calculated: ${input.text}") }
+    
+    // Add MCP support
+    configureMCP(
+        tools = listOf(translatorTool, calculatorTool),
+        serverName = "my-mcp-server",
+        serverVersion = "1.0.0"
+    )
+}
+```
+
+### Connecting as an MCP Client
+
+```kotlin
+import predictable.mcp.client.MCPClient
+import predictable.mcp.config.MCPConfig
+import predictable.mcp.config.MCPServer
+import predictable.mcp.config.ServerConfig
+import kotlinx.serialization.json.*
+
+suspend fun connectToMCPServer() {
+    val config = MCPConfig(
+        servers = mapOf(
+            "remote-server" to MCPServer(
+                name = "Remote Server",
+                namespace = "remote",
+                description = "Remote MCP server",
+                config = ServerConfig.SSE(
+                    url = "http://localhost:8080/sse"
+                )
+            )
+        )
+    )
+    
+    MCPClient(config) { client ->
+        // List available tools
+        val tools = client.tools()
+        tools.forEach { tool ->
+            println("Found tool: ${tool.name} - ${tool.description}")
+        }
+        
+        // Invoke a tool with JsonObject
+        val translatorTool = tools.first { it.name == "translator" }
+        val input = buildJsonObject {
+            put("text", "Hello world")
+            put("targetLanguage", "Spanish")
+        }
+        val result = translatorTool.invoke(input)
+        
+        println("Translation result: $result")
+    }
+}
+```
+
+### Exposing Agents as MCP Tools
+
+Since agents implement the `AI` interface, they can be directly exposed through MCP:
+
+```kotlin
+import predictable.Agent
+import predictable.agent.Model
+import predictable.mcp.server.startKtorMCPServer
+import kotlinx.coroutines.runBlocking
+
+fun main() = runBlocking {
+    val codeReviewer = Agent(
+        name = "code_reviewer",
+        description = "Reviews code for quality and best practices",
+        system = "You are an expert code reviewer. Provide constructive feedback.",
+        model = Model.default
+    )
+
+    val testGenerator = Agent(
+        name = "test_generator",
+        description = "Generates unit tests for code",
+        system = "You are a test engineer. Create comprehensive test cases.",
+        model = Model.default
+    )
+
+    // Expose agents as MCP tools
+    val server = startKtorMCPServer(
+        tools = listOf(
+            codeReviewer.invoke<String, String>(),  // Convert agent to tool with explicit types
+            testGenerator.invoke<String, String>()
+        ),
+        port = 8080
+    )
+    
+    server.start(wait = true)
+}
+```
+
 ## Examples
 
 ### Building a Q&A System
