@@ -14,7 +14,14 @@ import predictable.tool.ToolCallback
 import predictable.tool.OutputSchema
 
 /**
- * OpenAI provider implementation for the Agent.
+ * Provider implementation for OpenAI-compatible APIs.
+ * 
+ * Handles communication with OpenAI or compatible APIs (like OpenRouter, local models)
+ * for chat completions, structured outputs, and streaming responses. Supports tool
+ * calling and manages the complete lifecycle of AI interactions.
+ * 
+ * @property baseUrl The base URL for the API endpoint (null for default OpenAI)
+ * @property apiKey The API key for authentication
  */
 class OpenAIProvider(
   private val baseUrl: String?,
@@ -29,7 +36,17 @@ class OpenAIProvider(
   )
 
   /**
-   * Execute a chat completion request with the given messages and tools.
+   * Executes a standard chat completion request.
+   * 
+   * Sends messages to the AI model and returns a text response. Handles tool
+   * calls automatically if tools are provided and the model decides to use them.
+   * 
+   * @param model The AI model configuration to use
+   * @param messages The conversation history
+   * @param tools Available tools the AI can call
+   * @param parameters Request configuration parameters
+   * @param toolCallBack Optional callbacks for tool execution events
+   * @return Text response with metadata and message history
    */
   suspend fun chatCompletion(
     model: Model,
@@ -61,7 +78,19 @@ class OpenAIProvider(
   }
 
   /**
-   * Execute a structured chat completion request with the given messages, tools, and schema.
+   * Executes a structured chat completion request.
+   * 
+   * Generates a response conforming to the specified schema. Automatically retries
+   * on parsing errors and handles tool calls if tools are provided.
+   * 
+   * @param T The type of the structured output
+   * @param messages The conversation history
+   * @param model The AI model configuration to use
+   * @param tools Available tools the AI can call
+   * @param schema Schema defining the expected output structure
+   * @param parameters Request configuration parameters
+   * @param toolCallBack Optional callbacks for tool execution events
+   * @return Structured response with parsed data, metadata, and message history
    */
   suspend fun <T> chatCompletionStructured(
     messages: List<Message>,
@@ -134,7 +163,17 @@ class OpenAIProvider(
   }
 
   /**
-   * Execute a streaming chat completion request with the given messages and tools.
+   * Creates a streaming chat completion.
+   * 
+   * Returns a Flow that emits response chunks as they're generated. Supports
+   * real-time display of AI responses and handles tool calls during streaming.
+   * 
+   * @param model The AI model configuration to use
+   * @param messages The conversation history
+   * @param tools Available tools the AI can call
+   * @param parameters Request configuration parameters
+   * @param toolCallBack Optional callbacks for tool execution events
+   * @return StringStream response containing a Flow of response chunks
    */
   fun chatCompletionStream(
     model: Model,
@@ -152,7 +191,19 @@ class OpenAIProvider(
   }
 
   /**
-   * Execute a streaming structured chat completion request with the given messages, tools, and schema.
+   * Creates a streaming structured chat completion.
+   * 
+   * Returns a Flow that emits structured data chunks conforming to the schema.
+   * Useful for progressively building complex structured outputs.
+   * 
+   * @param T The type of the structured output
+   * @param messages The conversation history
+   * @param model The AI model configuration to use
+   * @param tools Available tools the AI can call
+   * @param schema Schema defining the expected output structure
+   * @param parameters Request configuration parameters
+   * @param toolCallBack Optional callbacks for tool execution events
+   * @return StructuredStream response containing a Flow of structured chunks
    */
   fun <T> chatCompletionStructuredStream(
     messages: List<Message>,
