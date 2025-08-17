@@ -101,4 +101,39 @@ tasks.withType<DokkaTask>().configureEach {
     }
 }
 
+// Task to extract README code snippets
+val extractReadmeSnippets = tasks.register<com.predictable.machines.build.logic.CompileReadmeSnippets>("extractReadmeSnippets") {
+    readmeFile.set(project.rootProject.file("README.md"))
+    outputDir.set(layout.buildDirectory.dir("readme-snippets"))
+    sourceCompatibility.set("17")
+    description = "Extracts Kotlin code snippets from README.md"
+    group = "documentation"
+}
+
+// Create a custom source set for README snippets that actually compiles
+kotlin {
+    @Suppress("UNUSED_VARIABLE")
+    sourceSets {
+        val commonTest by getting {
+            kotlin.srcDir(layout.buildDirectory.dir("readme-snippets"))
+        }
+    }
+}
+
+// Make test compilation depend on extracting README snippets
+afterEvaluate {
+    tasks.matching { 
+        it.name.startsWith("compileTestKotlin") || 
+        it.name.startsWith("compileCommonTestKotlin") ||
+        it.name.contains("UnitTestKotlin") // Android test tasks
+    }.configureEach {
+        dependsOn(extractReadmeSnippets)
+    }
+    
+    // Make check depend on README extraction and compilation
+    tasks.named("check") {
+        dependsOn(extractReadmeSnippets)
+    }
+}
+
 mavenPublishing { coordinates(group.toString(), "agents", version.toString()) }
