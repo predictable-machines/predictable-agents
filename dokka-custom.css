@@ -1,0 +1,19 @@
+/* Hide Kotlin Playground run button since it doesn't have access to our library */
+.run-button {
+    display: none !important;
+}
+
+/* Also hide the playground controls */
+.playground-controls {
+    display: none !important;
+}
+
+/* Hide any playground-related UI elements */
+[data-kotlin-playground] {
+    pointer-events: none;
+}
+
+/* Ensure code samples are still copyable but not runnable */
+.sample-container .copy-button {
+    display: block !important;
+}
