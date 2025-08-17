@@ -53,16 +53,12 @@ interface AI<in A, out B> {
 
     /**
      * Converts a suspend function into an AI operation using the unary plus operator.
-     * Provides a concise syntax for creating Tool instances from lambda functions.
+     * Provides a concise syntax for creating [Tool] instances from lambda functions.
      * 
      * @param A The input type of the function
      * @param B The output type of the function
-     * @return An AI instance wrapping the suspend function
-     * 
-     * Example:
-     * ```kotlin
-     * val myTool = +{ input: String -> "Processed: $input" }
-     * ```
+     * @return An [AI] instance wrapping the suspend function
+     * @sample predictable.samples.aiUnaryPlusSample
      */
     inline operator fun <reified A, reified B> (suspend (A) -> B).unaryPlus(): AI<A, B> =
       Tool { input: A ->
@@ -76,6 +72,7 @@ interface AI<in A, out B> {
      * @param A The input type
      * @param B The output type
      * @return A generated name string based on the type names
+     * @sample predictable.samples.aiNameGenerationSample
      */
     inline fun <reified A, reified B> name(): String {
       val input = typeNameToIdentifier<A>()
@@ -90,6 +87,7 @@ interface AI<in A, out B> {
      * @param A The input type
      * @param B The output type
      * @return A generated description string showing the transformation
+     * @sample predictable.samples.aiDescriptionGenerationSample
      */
     inline fun <reified A, reified B> description(): String {
       val input = typeNameToIdentifier<A>()
@@ -103,6 +101,7 @@ interface AI<in A, out B> {
      * 
      * @param A The type to convert
      * @return A cleaned identifier string suitable for use in names
+     * @sample predictable.samples.aiTypeNameToIdentifierSample
      */
     inline fun <reified A> typeNameToIdentifier() = typeOf<A>().toString()
       .substringAfterLast(".")

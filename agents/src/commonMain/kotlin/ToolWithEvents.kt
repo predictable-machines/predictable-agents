@@ -26,23 +26,7 @@ import kotlin.uuid.Uuid
  * @property scope The coroutine channel scope for emitting events
  * @property block The suspend function that implements the tool's logic with event emission
  * 
- * Example:
- * ```kotlin
- * val progressTool = ToolWithEvents<LongTask, Result, ProgressEvent>(
- *   name = "longTaskWithProgress",
- *   description = "Executes a long task with progress updates",
- *   schema = KotlinSchema<LongTask, Result>(),
- *   id = Uuid.random().toString(),
- *   scope = producerScope
- * ) { input ->
- *   send(ProgressEvent(0, "Starting"))
- *   // Process...
- *   send(ProgressEvent(50, "Halfway"))
- *   // More processing...
- *   send(ProgressEvent(100, "Complete"))
- *   Result(success = true)
- * }
- * ```
+ * @sample predictable.samples.toolWithEventsProgressSample
  */
 data class ToolWithEvents<in A, out B, E>(
   override val name: String,
@@ -79,18 +63,7 @@ data class ToolWithEvents<in A, out B, E>(
      * @param fn The suspend function implementing the tool's logic with event emission
      * @return A new ToolWithEvents instance configured for event emission
      * 
-     * Example:
-     * ```kotlin
-     * channelFlow<ProgressEvent> {
-     *   val tool = ToolWithEvents<Input, Output, ProgressEvent> { input ->
-     *     send(ProgressEvent("Processing started"))
-     *     val result = process(input)
-     *     send(ProgressEvent("Processing complete"))
-     *     result
-     *   }
-     *   tool(myInput)
-     * }
-     * ```
+     * @sample predictable.samples.toolWithEventsExtensionSample
      */
     inline operator fun <reified A, reified B, reified E> ProducerScope<E>.invoke(
       name: String = AI.name<A, B>(),

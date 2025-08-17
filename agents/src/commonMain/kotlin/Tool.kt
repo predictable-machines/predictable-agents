@@ -21,18 +21,8 @@ import kotlin.uuid.Uuid
  * @property id Unique identifier for this tool instance
  * @property block The suspend function that implements the tool's logic
  * 
- * Example:
- * ```kotlin
- * val summarizer = Tool<String, String>(
- *   name = "summarize",
- *   description = "Summarizes long text into key points",
- *   schema = KotlinSchema<String, String>(),
- *   id = Uuid.random().toString()
- * ) { input ->
- *   // AI processing logic here
- *   "Summary of: $input"
- * }
- * ```
+ * @sample predictable.samples.toolCreationSample
+ * @sample predictable.samples.toolStructuredSample
  */
 data class Tool<in A, out B>(
   override val name: String,
@@ -68,12 +58,7 @@ data class Tool<in A, out B>(
      * @param fn The suspend function implementing the tool's logic
      * @return A new Tool instance with the specified configuration
      * 
-     * Example:
-     * ```kotlin
-     * val calculator = Tool<CalculatorInput, CalculatorOutput> { input ->
-     *   CalculatorOutput(result = input.a + input.b)
-     * }
-     * ```
+     * @sample predictable.samples.toolFactorySample
      */
     inline operator fun <reified A, reified B> invoke(
       name: String = AI.name<A, B>(),
