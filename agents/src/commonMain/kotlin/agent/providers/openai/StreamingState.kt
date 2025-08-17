@@ -7,7 +7,6 @@ import predictable.agent.Message
 
 /**
  * Data class to encapsulate the state needed for streaming operations.
- * This makes the code more thread-safe by avoiding shared mutable state.
  */
 data class StreamingState(
   // The request being processed

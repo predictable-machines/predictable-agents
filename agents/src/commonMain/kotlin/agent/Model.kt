@@ -3,13 +3,30 @@ package predictable.agent
 import com.aallam.openai.client.OpenAIHost
 import kotlinx.serialization.Serializable
 
+/**
+ * Configuration for an AI model endpoint.
+ * 
+ * Specifies the API endpoint and model name to use for AI operations.
+ * Supports various providers including OpenAI, OpenRouter, and local models.
+ * 
+ * @property apiUrl The base URL for the AI provider's API
+ * @property name The specific model identifier to use (e.g., "gpt-4", "claude-3")
+ */
 @Serializable
 data class Model(
   val apiUrl: String,
   val name: String
 ) {
   companion object {
+    /**
+     * The standard OpenAI API base URL.
+     */
     val openAIBaseUrl = OpenAIHost.OpenAI.baseUrl
+    
+    /**
+     * Default model configuration.
+     * Uses GPT-4.1-nano by default for cost-effective operations.
+     */
     val default: Model =
 //      Model(
 //        apiUrl = "http://localhost:11434/v1/",
@@ -17,6 +34,10 @@ data class Model(
 //      )
       Model(openAIBaseUrl, "gpt-4.1-nano")
 
+    /**
+     * Model configuration for verification tasks.
+     * Uses a lightweight model suitable for validation and checks.
+     */
     val verification: Model =
       Model(openAIBaseUrl, "gpt-4.1-nano")
   }
