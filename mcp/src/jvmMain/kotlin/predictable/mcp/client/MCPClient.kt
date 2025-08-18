@@ -25,6 +25,33 @@ import predictable.tool.KotlinSchema
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
+/**
+ * Client for connecting to and interacting with MCP (Model Context Protocol) servers.
+ * 
+ * MCPClient manages connections to multiple MCP servers and provides a unified interface
+ * for discovering and using their tools and resources. It supports both SSE (Server-Sent Events)
+ * and STDIO (Standard I/O) transport mechanisms.
+ * 
+ * ## Connection Types
+ * 
+ * The client supports two transport mechanisms:
+ * - **SSE**: HTTP-based connections for remote servers
+ * - **STDIO**: Process-based connections for local tools
+ * 
+ * ## Usage Pattern
+ * 
+ * MCPClient uses a companion object invoke pattern for safe resource management:
+ * ```kotlin
+ * MCPClient(config) { client ->
+ *     val tools = client.tools()
+ *     val resources = client.resources()
+ *     // Use tools and resources
+ * } // Connections automatically closed
+ * ```
+ * 
+ * @property config Configuration defining the MCP servers to connect to
+ * @property clients Map of MCP SDK clients to their corresponding server configurations
+ */
 class MCPClient private constructor(
   val config: MCPConfig,
   val clients: Map<Client, MCPServer> = config.servers.map {
@@ -47,6 +74,11 @@ class MCPClient private constructor(
       }
     }
 
+  /**
+   * Establishes connections to all configured MCP servers.
+   * 
+   * @return List of cleanup functions to close connections
+   */
   suspend fun connect(): List<() -> Unit> =
     clients.map { (client, mcpServer) ->
       when (val config = mcpServer.config) {
@@ -95,6 +127,14 @@ class MCPClient private constructor(
     return { httpClient.close() }
   }
 
+  /**
+   * Discovers and returns all tools available from connected MCP servers.
+   * 
+   * Queries each connected server for its available tools and converts them
+   * to MCPTool instances that can be invoked.
+   * 
+   * @return List of available tools from all connected servers
+   */
   suspend fun tools(): List<MCPTool> =
     clients.keys.flatMap { client ->
       client.listTools()?.tools.orEmpty().map {
@@ -102,6 +142,13 @@ class MCPClient private constructor(
       }
     }
 
+  /**
+   * Discovers and returns all resources available from connected MCP servers.
+   * 
+   * Queries each connected server for its available resources.
+   * 
+   * @return List of available resources from all connected servers
+   */
   suspend fun resources(): List<MCPResource> =
     clients.keys.flatMap {
       it.listResources()?.resources.orEmpty().map {
@@ -132,7 +179,17 @@ class MCPClient private constructor(
   }
 
   companion object {
-
+    /**
+     * Creates an MCPClient, executes the provided block, and ensures proper cleanup.
+     * 
+     * This is the recommended way to use MCPClient as it ensures all connections
+     * are properly closed after use.
+     * 
+     * @param config Configuration for the MCP servers to connect to
+     * @param block Suspend function to execute with the connected client
+     * @return Result of the block execution
+     * @throws Exception if connection fails or block execution fails
+     */
     suspend operator fun <A> invoke(
       config: MCPConfig,
       block: suspend (MCPClient) -> A

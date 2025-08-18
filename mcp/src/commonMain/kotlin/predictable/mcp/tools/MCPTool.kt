@@ -13,6 +13,27 @@ import predictable.tool.Schema
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+/**
+ * Represents a tool exposed through the Model Context Protocol.
+ * 
+ * MCPTool wraps MCP SDK tools and makes them compatible with the Predictable Agents
+ * framework. It implements the [AI] interface, allowing MCP tools to be used
+ * alongside native agents and tools.
+ * 
+ * ## Tool Integration
+ * 
+ * MCPTool bridges between two tool systems:
+ * - **MCP Tools**: Tools exposed by MCP servers using the MCP SDK
+ * - **Predictable Tools**: Native tools in the Predictable Agents framework
+ * 
+ * This allows seamless integration of external MCP services with local AI agents.
+ * 
+ * @property tool The underlying MCP SDK tool definition
+ * @property id Unique identifier for this tool instance (default: random UUID)
+ * @property name The tool's name, used for invocation and identification
+ * @property description Human-readable description of the tool's functionality
+ * @property block The async function that executes the tool's logic
+ */
 data class MCPTool(
   val tool: Tool,
   override val id: String = Uuid.Companion.random().toString(),
