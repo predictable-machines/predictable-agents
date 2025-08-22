@@ -79,7 +79,7 @@ class AgentToolRoundsTest {
         name = "Test Agent With Tools",
         description = "A test agent with tools for unit tests",
         system = "You are a helpful assistant for testing purposes. Use the tools when appropriate.",
-        model = Model.default,
+        model = Model.defaultModel,
         tools = listOf(multiStepCalculatorTool, multiStepWeatherTool),
         parameters = RequestParameters(maxSteps = RequestParameters.MAX_STEPS)
     )
@@ -122,7 +122,7 @@ class AgentToolRoundsTest {
             name = "Test Agent With Limited Steps",
             description = "A test agent with tools for unit tests and limited steps",
             system = "You are a helpful assistant for testing purposes. Use the tools when appropriate.",
-            model = Model.default,
+            model = Model.defaultModel,
             tools = listOf(randomGeneratorTool, +::calculateResult),
             parameters = RequestParameters(maxSteps = 10)
         )

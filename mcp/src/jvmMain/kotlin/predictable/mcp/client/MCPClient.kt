@@ -2,7 +2,6 @@ package predictable.mcp.client
 
 import io.ktor.client.*
 import io.ktor.client.plugins.sse.*
-import io.ktor.server.application.serverConfig
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResultBase
 import io.modelcontextprotocol.kotlin.sdk.Implementation
@@ -17,11 +16,16 @@ import kotlinx.io.buffered
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import predictable.mcp.config.MCPConfig
-import predictable.mcp.config.MCPServer
+import predictable.mcp.config.MCPServerConfig
 import predictable.mcp.config.ServerConfig
 import predictable.mcp.resources.MCPResource
 import predictable.mcp.tools.MCPTool
 import predictable.tool.KotlinSchema
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.future.future
+import java.util.concurrent.CompletableFuture
+import kotlin.jvm.JvmSynthetic
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -54,7 +58,7 @@ import kotlin.time.Duration.Companion.minutes
  */
 class MCPClient private constructor(
   val config: MCPConfig,
-  val clients: Map<Client, MCPServer> = config.servers.map {
+  val clients: Map<Client, MCPServerConfig> = config.servers.map {
     Client(
       Implementation(
         name = "Predictable MCP Client",
@@ -63,6 +67,8 @@ class MCPClient private constructor(
     ) to it.value
   }.toMap(),
 ) {
+  
+  private val coroutineScope = CoroutineScope(SupervisorJob())
 
   private fun defaultHttpClient(): HttpClient =
     HttpClient {
@@ -79,6 +85,7 @@ class MCPClient private constructor(
    * 
    * @return List of cleanup functions to close connections
    */
+  @JvmSynthetic
   suspend fun connect(): List<() -> Unit> =
     clients.map { (client, mcpServer) ->
       when (val config = mcpServer.config) {
@@ -135,6 +142,7 @@ class MCPClient private constructor(
    * 
    * @return List of available tools from all connected servers
    */
+  @JvmSynthetic
   suspend fun tools(): List<MCPTool> =
     clients.keys.flatMap { client ->
       client.listTools()?.tools.orEmpty().map {
@@ -149,6 +157,7 @@ class MCPClient private constructor(
    * 
    * @return List of available resources from all connected servers
    */
+  @JvmSynthetic
   suspend fun resources(): List<MCPResource> =
     clients.keys.flatMap {
       it.listResources()?.resources.orEmpty().map {
@@ -177,6 +186,67 @@ class MCPClient private constructor(
       KotlinSchema.Companion.json.encodeToJsonElement(CallToolResultBase.Companion.serializer(), result).jsonObject
     } else JsonObject(emptyMap())
   }
+  
+  // ==================== Async Methods for Java Interop ====================
+  
+  /**
+   * Establishes connections to all configured MCP servers asynchronously.
+   * 
+   * @return CompletableFuture containing list of cleanup functions to close connections
+   */
+  fun connectAsync(): CompletableFuture<List<() -> Unit>> =
+    coroutineScope.future {
+      connect()
+    }
+  
+  /**
+   * Discovers and returns all tools available from connected MCP servers asynchronously.
+   * 
+   * @return CompletableFuture containing list of available tools from all connected servers
+   */
+  fun toolsAsync(): CompletableFuture<List<MCPTool>> =
+    coroutineScope.future {
+      tools()
+    }
+  
+  /**
+   * Discovers and returns all resources available from connected MCP servers asynchronously.
+   * 
+   * @return CompletableFuture containing list of available resources from all connected servers
+   */
+  fun resourcesAsync(): CompletableFuture<List<MCPResource>> =
+    coroutineScope.future {
+      resources()
+    }
+  
+  // ==================== Blocking Methods for Java Interop ====================
+  
+  /**
+   * Establishes connections to all configured MCP servers (blocking).
+   * Blocks the current thread until all connections are established.
+   * 
+   * @return List of cleanup functions to close connections
+   */
+  fun connectBlocking(): List<() -> Unit> =
+    connectAsync().get()
+  
+  /**
+   * Discovers and returns all tools available from connected MCP servers (blocking).
+   * Blocks the current thread until all tools are discovered.
+   * 
+   * @return List of available tools from all connected servers
+   */
+  fun toolsBlocking(): List<MCPTool> =
+    toolsAsync().get()
+  
+  /**
+   * Discovers and returns all resources available from connected MCP servers (blocking).
+   * Blocks the current thread until all resources are discovered.
+   * 
+   * @return List of available resources from all connected servers
+   */
+  fun resourcesBlocking(): List<MCPResource> =
+    resourcesAsync().get()
 
   companion object {
     /**
@@ -190,6 +260,7 @@ class MCPClient private constructor(
      * @return Result of the block execution
      * @throws Exception if connection fails or block execution fails
      */
+    @JvmSynthetic
     suspend operator fun <A> invoke(
       config: MCPConfig,
       block: suspend (MCPClient) -> A
@@ -206,5 +277,15 @@ class MCPClient private constructor(
       }
       return result ?: error("Result is null, something went wrong during the block execution.")
     }
+    
+    /**
+     * Creates an MCPClient for Java interop without automatic resource management.
+     * The caller is responsible for connecting and cleaning up resources.
+     * 
+     * @param config Configuration for the MCP servers to connect to
+     * @return A new MCPClient instance
+     */
+    @JvmStatic
+    fun create(config: MCPConfig): MCPClient = MCPClient(config)
   }
 }

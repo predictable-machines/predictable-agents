@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
  * 
  * Example:
  * ```kotlin
- * val server = MCPServer(
+ * val server = MCPServerConfig(
  *     name = "Translation Service",
  *     namespace = "translation",
  *     description = "Provides multi-language translation capabilities",
@@ -26,7 +26,7 @@ import kotlinx.serialization.Serializable
  * ```
  */
 @Serializable
-data class MCPServer(
+data class MCPServerConfig(
   val name: String,
   val namespace: String,
   val description: String,

@@ -2,6 +2,7 @@ package predictable.agent
 
 import com.aallam.openai.client.OpenAIHost
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmField
 
 /**
  * Configuration for an AI model endpoint.
@@ -21,13 +22,15 @@ data class Model(
     /**
      * The standard OpenAI API base URL.
      */
+    @JvmField
     val openAIBaseUrl = OpenAIHost.OpenAI.baseUrl
     
     /**
      * Default model configuration.
      * Uses GPT-4.1-nano by default for cost-effective operations.
      */
-    val default: Model =
+    @JvmField
+    val defaultModel: Model =
 //      Model(
 //        apiUrl = "http://localhost:11434/v1/",
 //        name = "qwen3"
@@ -38,6 +41,7 @@ data class Model(
      * Model configuration for verification tasks.
      * Uses a lightweight model suitable for validation and checks.
      */
+    @JvmField
     val verification: Model =
       Model(openAIBaseUrl, "gpt-4.1-nano")
   }

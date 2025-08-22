@@ -40,7 +40,7 @@ class AgentStructuredOutputTest {
         name = "Structured Output Test Agent",
         description = "A test agent for structured output unit tests",
         system = "You are a helpful assistant for testing structured output. Always respond with the exact structure requested.",
-        model = Model.default, // Using gpt-4o-mini as required
+        model = Model.defaultModel, // Using gpt-4o-mini as required
         tools = emptyList(),
     )
 

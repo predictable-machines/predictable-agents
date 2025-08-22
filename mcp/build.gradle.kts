@@ -47,9 +47,16 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.ktor.server.test.host)
                 implementation(libs.ktor.client.cio)
+                implementation(libs.junit)
+                implementation(libs.kotlin.test.junit)
             }
         }
     }
+}
+
+// Configure JVM test task to use JUnit
+tasks.named<Test>("jvmTest") {
+    useJUnit()
 }
 
 mavenPublishing {

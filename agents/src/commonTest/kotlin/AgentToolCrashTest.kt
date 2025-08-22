@@ -26,7 +26,7 @@ class AgentToolCrashTest {
     name = "Test Agent",
     description = "A test agent for unit tests",
     system = "You are a helpful assistant for testing purposes",
-    model = Model.default, // Using gpt-4o-mini as required
+    model = Model.defaultModel, // Using gpt-4o-mini as required
     tools = listOf(tool),
   )
 

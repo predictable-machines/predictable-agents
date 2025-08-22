@@ -3,7 +3,6 @@ package predictable
 import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.Serializable
 import predictable.TestUtils.workflowWithEmptyState
-import predictable.agent.Message
 import predictable.agent.Model
 import predictable.agent.RequestParameters
 import predictable.agent.StreamResponse
@@ -62,7 +61,7 @@ class AgentMetadataAccumulationTest {
             name = "MetadataTestAgent",
             description = "Agent for testing metadata accumulation",
             system = "You are a helpful assistant. Use the provided tools when needed.",
-            model = Model.default,
+            model = Model.defaultModel,
             tools = listOf(calculatorTool, weatherTool)
         )
 
@@ -107,7 +106,7 @@ class AgentMetadataAccumulationTest {
             name = "StreamingMetadataTestAgent",
             description = "Agent for testing streaming metadata accumulation",
             system = "You are a helpful assistant. Use the provided tools when needed to answer questions.",
-            model = Model.default,
+            model = Model.defaultModel,
             tools = listOf(calculatorTool, weatherTool)
         )
 
@@ -160,7 +159,7 @@ class AgentMetadataAccumulationTest {
             name = "IntermediateMetadataTestAgent",
             description = "Agent for testing intermediate metadata emissions",
             system = "You are a helpful assistant. First use the calculator to add 5+3, then use the weather tool for Tokyo.",
-            model = Model.default,
+            model = Model.defaultModel,
             tools = listOf(calculatorTool, weatherTool)
         )
 
@@ -225,7 +224,7 @@ class AgentMetadataAccumulationTest {
             name = "MaxStepsTestAgent",
             description = "Agent for testing max steps metadata accumulation",
             system = "You are a helpful assistant. Always use the RecursiveTool when asked to calculate.",
-            model = Model.default,
+            model = Model.defaultModel,
             tools = listOf(recursiveTool),
             parameters = RequestParameters(maxSteps = 2)
         )

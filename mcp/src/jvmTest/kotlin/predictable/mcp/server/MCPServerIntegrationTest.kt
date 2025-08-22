@@ -8,8 +8,9 @@ import kotlinx.serialization.json.put
 import predictable.Tool
 import predictable.mcp.client.MCPClient
 import predictable.mcp.config.MCPConfig
-import predictable.mcp.config.MCPServer
+import predictable.mcp.config.MCPServerConfig
 import predictable.mcp.config.ServerConfig
+import predictable.mcp.server.MCPServer.startKtorMCPServer
 import predictable.tool.KotlinSchema
 import kotlin.test.*
 
@@ -100,7 +101,7 @@ class MCPServerIntegrationTest {
       // Configure MCPClient to connect to our test server
       val config = MCPConfig(
         servers = mapOf(
-          "test-server" to MCPServer(
+          "test-server" to MCPServerConfig(
             name = "Test Server",
             namespace = "test",
             description = "Test MCP Server",
@@ -178,7 +179,7 @@ class MCPServerIntegrationTest {
     try {
       val config = MCPConfig(
         servers = mapOf(
-          "test-server" to MCPServer(
+          "test-server" to MCPServerConfig(
             name = "Test Server",
             namespace = "test",
             description = "Test MCP Server",
@@ -223,7 +224,7 @@ class MCPServerIntegrationTest {
     try {
       val config = MCPConfig(
         servers = mapOf(
-          "empty-server" to MCPServer(
+          "empty-server" to MCPServerConfig(
             name = "Empty Server",
             namespace = "empty",
             description = "Server with no tools",
@@ -267,7 +268,7 @@ class MCPServerIntegrationTest {
     try {
       val config = MCPConfig(
         servers = mapOf(
-          "custom-server" to MCPServer(
+          "custom-server" to MCPServerConfig(
             name = "Custom Server",
             namespace = "custom",
             description = "Server with custom configuration",
