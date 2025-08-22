@@ -3,6 +3,7 @@ package predictable.agent
 import kotlinx.serialization.Serializable
 import predictable.tool.ToolCallRequest
 import kotlin.jvm.JvmStatic
+import kotlin.jvm.JvmOverloads
 
 /**
  * Represents a message in a conversation between users, assistants, and systems.
@@ -18,7 +19,7 @@ import kotlin.jvm.JvmStatic
  * @property toolCallId Identifier for tool call responses
  */
 @Serializable
-data class Message(
+data class Message @JvmOverloads constructor(
   val role: MessageRole,
   val content: String,
   val name: String? = null,

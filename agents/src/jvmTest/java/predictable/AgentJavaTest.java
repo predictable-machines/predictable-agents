@@ -255,21 +255,23 @@ public class AgentJavaTest {
     public void testAgentInputVariants() {
         Agent agent = createTestAgent();
         
-        // Test with AgentInput.Text
+        // Test with AgentInput.Text using @JvmOverloads benefit
         AgentInput.Text textInput = new AgentInput.Text(
             "Hello from Java",
-            RequestParameters.defaultParameters
+            new RequestParameters()  // Using @JvmOverloads - no need to specify all parameters
         );
         String textResponse = agent.text(textInput);
         assertNotNull("Text response should not be null", textResponse);
         
-        // Test with AgentInput.Messages
+        // Test with AgentInput.Messages using @JvmOverloads benefit
         List<Message> messages = Arrays.asList(
-            user("Test message from Java")
+            new Message(MessageRole.User.INSTANCE, "Test message from Java"),  // Using @JvmOverloads constructor
+            new Message(MessageRole.Assistant.INSTANCE, "I understand"),  // No need for optional parameters
+            new Message(MessageRole.User.INSTANCE, "Great!")
         );
         AgentInput.Messages messagesInput = new AgentInput.Messages(
             messages, 
-            RequestParameters.defaultParameters
+            new RequestParameters()  // Using @JvmOverloads
         );
         String messagesResponse = agent.text(messagesInput);
         assertNotNull("Messages response should not be null", messagesResponse);
@@ -293,5 +295,92 @@ public class AgentJavaTest {
         assertNotNull("Response 3 should not be null", future3.get());
         
         System.out.println("All async requests completed successfully");
+    }
+
+    @Test
+    public void testJvmOverloadsRequestParameters() {
+        Agent agent = createTestAgent();
+        
+        // Test creating RequestParameters with @JvmOverloads - various constructor overloads
+        RequestParameters defaultParams = new RequestParameters();
+        assertNotNull("Default parameters should not be null", defaultParams);
+        
+        // Test with only temperature
+        RequestParameters tempParams = new RequestParameters(0.7);
+        assertEquals(0.7, tempParams.getTemperature(), 0.001);
+        
+        // Test with temperature and topP
+        RequestParameters tempAndTopParams = new RequestParameters(0.7, 0.9);
+        assertEquals(0.7, tempAndTopParams.getTemperature(), 0.001);
+        assertEquals(0.9, tempAndTopParams.getTopP(), 0.001);
+        
+        // Test with multiple parameters
+        RequestParameters multiParams = new RequestParameters(
+            0.7,    // temperature
+            0.9,    // topP
+            1,      // n
+            null,   // stop
+            false   // store
+        );
+        assertEquals(0.7, multiParams.getTemperature(), 0.001);
+        assertEquals(0.9, multiParams.getTopP(), 0.001);
+        assertEquals(Integer.valueOf(1), multiParams.getN());
+        assertFalse(multiParams.getStore());
+        
+        System.out.println("RequestParameters @JvmOverloads test passed");
+    }
+    
+    @Test
+    public void testJvmOverloadsMessage() {
+        // Test Message with @JvmOverloads - various constructor overloads
+        
+        // Simple message with just role and content
+        Message simpleMsg = new Message(MessageRole.User.INSTANCE, "Hello");
+        assertEquals(MessageRole.User.INSTANCE, simpleMsg.getRole());
+        assertEquals("Hello", simpleMsg.getContent());
+        assertNull(simpleMsg.getName());
+        assertNull(simpleMsg.getToolCalls());
+        
+        // Message with role, content, and name
+        Message namedMsg = new Message(MessageRole.User.INSTANCE, "Hello", "John");
+        assertEquals("John", namedMsg.getName());
+        
+        // Message with role, content, name, and tool calls
+        Message toolMsg = new Message(
+            MessageRole.Assistant.INSTANCE, 
+            "Using tool", 
+            "Assistant",
+            new ArrayList<>()  // Empty tool calls list
+        );
+        assertNotNull(toolMsg.getToolCalls());
+        assertEquals(0, toolMsg.getToolCalls().size());
+        
+        System.out.println("Message @JvmOverloads test passed");
+    }
+    
+    @Test
+    public void testCombinedJvmOverloadsUsage() {
+        // Test combining @JvmOverloads from multiple classes
+        Agent agent = createTestAgent();
+        
+        // Create messages with minimal parameters
+        List<Message> conversation = Arrays.asList(
+            new Message(MessageRole.System.INSTANCE, "You are a helpful assistant"),
+            new Message(MessageRole.User.INSTANCE, "What is Java?"),
+            new Message(MessageRole.Assistant.INSTANCE, "Java is a programming language"),
+            new Message(MessageRole.User.INSTANCE, "Tell me more")
+        );
+        
+        // Create request parameters with just temperature
+        RequestParameters params = new RequestParameters(0.5);
+        
+        // Create AgentInput with the simplified constructors
+        AgentInput.Messages input = new AgentInput.Messages(conversation, params);
+        
+        // Test the agent
+        String response = agent.text(input);
+        assertNotNull("Response should not be null", response);
+        
+        System.out.println("Combined @JvmOverloads usage test passed");
     }
 }

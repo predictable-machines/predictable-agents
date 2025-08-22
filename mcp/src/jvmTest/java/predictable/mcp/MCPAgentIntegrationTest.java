@@ -132,12 +132,7 @@ public class MCPAgentIntegrationTest {
                 "Test Server",
                 "test",
                 "Test MCP Server for Agent Integration",
-                new ServerConfig.SSE(
-                    "http://localhost:8100/sse",
-                    new HashMap<>(),
-                    new ArrayList<>(),
-                    false
-                )
+                new ServerConfig.SSE("http://localhost:8100/sse")  // Using @JvmOverloads - simpler!
             ));
             
             MCPConfig config = new MCPConfig(servers);
@@ -217,12 +212,7 @@ public class MCPAgentIntegrationTest {
                     "Async Server",
                     "async",
                     "Server for async agent testing",
-                    new ServerConfig.SSE(
-                        "http://localhost:8101/sse",
-                        new HashMap<>(),
-                        new ArrayList<>(),
-                        false
-                    )
+                    new ServerConfig.SSE("http://localhost:8101/sse")  // Using @JvmOverloads
                 )
             );
             
@@ -250,6 +240,56 @@ public class MCPAgentIntegrationTest {
     }
 
     @Test
+    public void testJvmOverloadsServerConfig() {
+        // Test ServerConfig.SSE with @JvmOverloads - various constructor overloads
+        
+        // Minimal SSE config with just URL
+        ServerConfig.SSE minimalSSE = new ServerConfig.SSE("http://localhost:8080/sse");
+        assertEquals("http://localhost:8080/sse", minimalSSE.getUrl());
+        assertTrue(minimalSSE.getHeaders().isEmpty());
+        assertTrue(minimalSSE.getAlwaysAllow().isEmpty());
+        assertFalse(minimalSSE.getDisabled());
+        
+        // SSE config with URL and headers
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Authorization", "Bearer token");
+        ServerConfig.SSE sseWithHeaders = new ServerConfig.SSE("http://localhost:8080/sse", headers);
+        assertEquals(headers, sseWithHeaders.getHeaders());
+        
+        // SSE config with URL, headers, and always allow
+        List<String> alwaysAllow = Arrays.asList("read", "write");
+        ServerConfig.SSE sseWithPermissions = new ServerConfig.SSE(
+            "http://localhost:8080/sse", 
+            headers, 
+            alwaysAllow
+        );
+        assertEquals(alwaysAllow, sseWithPermissions.getAlwaysAllow());
+        
+        // Test ServerConfig.STDIO with @JvmOverloads
+        
+        // Minimal STDIO config
+        ServerConfig.STDIO minimalSTDIO = new ServerConfig.STDIO(
+            "python",
+            Arrays.asList("script.py")
+        );
+        assertEquals("python", minimalSTDIO.getCommand());
+        assertEquals(1, minimalSTDIO.getArgs().size());
+        assertTrue(minimalSTDIO.getEnv().isEmpty());
+        
+        // STDIO config with environment variables
+        Map<String, String> env = new HashMap<>();
+        env.put("PYTHONPATH", "/usr/local/lib");
+        ServerConfig.STDIO stdioWithEnv = new ServerConfig.STDIO(
+            "python",
+            Arrays.asList("script.py"),
+            env
+        );
+        assertEquals(env, stdioWithEnv.getEnv());
+        
+        System.out.println("ServerConfig @JvmOverloads test passed");
+    }
+    
+    @Test
     public void testMultipleAgentsWithSameMCPServer() throws Exception {
         // Create test tools
         List<Tool<?, ?>> tools = createTestTools();
@@ -272,12 +312,7 @@ public class MCPAgentIntegrationTest {
                     "Shared Server",
                     "shared",
                     "Server shared by multiple agents",
-                    new ServerConfig.SSE(
-                        "http://localhost:8102/sse",
-                        new HashMap<>(),
-                        new ArrayList<>(),
-                        false
-                    )
+                    new ServerConfig.SSE("http://localhost:8102/sse")  // Using @JvmOverloads
                 )
             );
             
