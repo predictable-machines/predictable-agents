@@ -2,7 +2,6 @@ package predictable.mcp.client
 
 import io.ktor.client.*
 import io.ktor.client.plugins.sse.*
-import io.ktor.server.application.serverConfig
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResultBase
 import io.modelcontextprotocol.kotlin.sdk.Implementation
@@ -17,7 +16,7 @@ import kotlinx.io.buffered
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import predictable.mcp.config.MCPConfig
-import predictable.mcp.config.MCPServer
+import predictable.mcp.config.MCPServerConfig
 import predictable.mcp.config.ServerConfig
 import predictable.mcp.resources.MCPResource
 import predictable.mcp.tools.MCPTool
@@ -54,7 +53,7 @@ import kotlin.time.Duration.Companion.minutes
  */
 class MCPClient private constructor(
   val config: MCPConfig,
-  val clients: Map<Client, MCPServer> = config.servers.map {
+  val clients: Map<Client, MCPServerConfig> = config.servers.map {
     Client(
       Implementation(
         name = "Predictable MCP Client",

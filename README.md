@@ -514,7 +514,7 @@ The MCP module enables you to expose your AI agents and tools through the [Model
 
 ```kotlin
 import predictable.Tool
-import predictable.mcp.server.startKtorMCPServer
+import predictable.mcp.server.MCPServer.startKtorMCPServer
 import predictable.tool.KotlinSchema
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.runBlocking
@@ -561,7 +561,7 @@ fun main() = runBlocking {
 
 ```kotlin
 import io.ktor.server.application.*
-import predictable.mcp.server.configureMCP
+import predictable.mcp.server.MCPServer.configureMCP
 import predictable.Tool
 import predictable.tool.KotlinSchema
 import kotlinx.serialization.Serializable
@@ -602,14 +602,14 @@ fun Application.module() {
 ```kotlin
 import predictable.mcp.client.MCPClient
 import predictable.mcp.config.MCPConfig
-import predictable.mcp.config.MCPServer
+import predictable.mcp.config.MCPServerConfig
 import predictable.mcp.config.ServerConfig
 import kotlinx.serialization.json.*
 
 suspend fun connectToMCPServer() {
     val config = MCPConfig(
         servers = mapOf(
-            "remote-server" to MCPServer(
+            "remote-server" to MCPServerConfig(
                 name = "Remote Server",
                 namespace = "remote",
                 description = "Remote MCP server",
@@ -647,7 +647,7 @@ Since agents implement the `AI` interface, they can be directly exposed through 
 ```kotlin
 import predictable.Agent
 import predictable.agent.Model
-import predictable.mcp.server.startKtorMCPServer
+import predictable.mcp.server.MCPServer.startKtorMCPServer
 import kotlinx.coroutines.runBlocking
 
 fun main() = runBlocking {
