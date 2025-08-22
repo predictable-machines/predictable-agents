@@ -126,6 +126,7 @@ abstract class AbstractAgent @JvmOverloads constructor(
    * 
    * @sample predictable.samples.agentGenerateObjectSample
    */
+  @JvmSynthetic
   suspend inline fun <reified I, reified O> generateObject(input: I, requestParameters: RequestParameters = parameters): O =
     generateObject<I, O>(requestParameters).invoke(input)
 
@@ -157,6 +158,7 @@ abstract class AbstractAgent @JvmOverloads constructor(
    * 
    * @sample predictable.samples.agentStructuredStreamingSample
    */
+  @JvmSynthetic
   suspend inline fun <reified I, reified O> streamObject(input: I, requestParameters: RequestParameters = parameters): Flow<StreamResponse<O>> =
     streamObject<I, O>(requestParameters).invoke(input)
 
