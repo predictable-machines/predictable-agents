@@ -47,7 +47,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.ktor.server.test.host)
                 implementation(libs.ktor.client.cio)
-                implementation("junit:junit:4.13.2")
+                implementation(libs.junit)
                 implementation(libs.kotlin.test.junit)
             }
         }
