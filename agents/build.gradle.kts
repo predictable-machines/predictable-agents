@@ -49,9 +49,9 @@ kotlin {
           dependencies {
             implementation(libs.kotlin.reflect)
             implementation(libs.kotlinx.coroutines.reactive)
-            implementation("com.fasterxml.jackson.core:jackson-databind:2.15.3")
-            implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.3")
-            implementation("com.fasterxml.jackson.module:jackson-module-jsonSchema:2.15.3")
+            implementation(libs.jackson.databind)
+            implementation(libs.jackson.module.kotlin)
+            implementation(libs.jackson.module.jsonschema)
           }
         }
         
