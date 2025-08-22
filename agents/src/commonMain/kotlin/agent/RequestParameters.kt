@@ -2,6 +2,7 @@ package predictable.agent
 
 import kotlinx.serialization.Serializable
 import predictable.tool.ToolChoice
+import kotlin.jvm.JvmField
 
 /**
  * Configuration parameters for AI model requests.
@@ -54,6 +55,7 @@ data class RequestParameters(
      * Default request parameters with all optional values set to null.
      * Uses automatic tool choice and default max steps.
      */
-    val default: RequestParameters = RequestParameters()
+    @JvmField
+    val defaultParameters: RequestParameters = RequestParameters()
   }
 }

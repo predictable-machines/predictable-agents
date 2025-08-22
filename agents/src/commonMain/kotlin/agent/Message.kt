@@ -2,6 +2,7 @@ package predictable.agent
 
 import kotlinx.serialization.Serializable
 import predictable.tool.ToolCallRequest
+import kotlin.jvm.JvmStatic
 
 /**
  * Represents a message in a conversation between users, assistants, and systems.
@@ -32,6 +33,7 @@ data class Message(
      * @param content The system message content
      * @return A Message with System role
      */
+    @JvmStatic
     fun system(content: String): Message = Message(MessageRole.System, content)
     
     /**
@@ -41,6 +43,7 @@ data class Message(
      * @param content The assistant's response content
      * @return A Message with Assistant role
      */
+    @JvmStatic
     fun assistant(content: String): Message = Message(MessageRole.Assistant, content)
     
     /**
@@ -50,6 +53,7 @@ data class Message(
      * @param content The user's message content
      * @return A Message with User role
      */
+    @JvmStatic
     fun user(content: String): Message = Message(MessageRole.User, content)
     
     /**
@@ -60,6 +64,7 @@ data class Message(
      * @param content The message content
      * @return A Message with Custom role
      */
+    @JvmStatic
     fun custom(role: String, content: String): Message = Message(MessageRole.Custom(role), content)
   }
 }
