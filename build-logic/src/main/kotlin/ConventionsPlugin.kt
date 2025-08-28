@@ -31,6 +31,7 @@ private fun Project.setup() {
     dokkaSetup()
     javaSetup()
     kotlinSetup()
+    mavenPublishSetup()
     testSetup()
     openApiSetup()
 }
@@ -216,6 +217,12 @@ fun Project.setupKotlinMultiplatformWAsmTargets() {
                 }
             }
         }
+    }
+}
+
+private fun Project.mavenPublishSetup() {
+    withMavenPublish {
+        mavenPublishingSetup()
     }
 }
 
