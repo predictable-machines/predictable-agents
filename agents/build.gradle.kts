@@ -145,7 +145,7 @@ kotlin {
 
 // Make test compilation depend on extracting README snippets
 afterEvaluate {
-    tasks.named {
+    tasks.matching {
         name.startsWith("compileTestKotlin") ||
         name.startsWith("compileCommonTestKotlin") ||
         name.contains("UnitTestKotlin") // Android test tasks
