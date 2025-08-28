@@ -7,7 +7,7 @@ import org.jetbrains.dokka.gradle.DokkaTask
 import java.net.URL
 
 plugins {
-    alias(libs.plugins.android.library)
+    // alias(libs.plugins.android.library)
     alias(libs.plugins.conventions)
     alias(libs.plugins.dokka)
     alias(libs.plugins.kotlin.multiplatform)
@@ -15,7 +15,7 @@ plugins {
     alias(libs.plugins.mavenPublish)
 }
 
-setupKotlinMultiplatformAndroid()
+// setupKotlinMultiplatformAndroid()
 setupKotlinMultiplatformJvm()
 setupKotlinMultiplatformAppleTargets()
 setupKotlinMultiplatformLinuxTargets()
@@ -57,7 +57,7 @@ kotlin {
         
         jvmTest {
             dependencies {
-                implementation(project(":mcp"))
+                implementation(projects.mcp)
                 implementation(libs.ktor.server.core)
                 implementation(libs.ktor.server.cio)
                 implementation("junit:junit:4.13.2")
@@ -145,10 +145,10 @@ kotlin {
 
 // Make test compilation depend on extracting README snippets
 afterEvaluate {
-    tasks.matching { 
-        it.name.startsWith("compileTestKotlin") || 
-        it.name.startsWith("compileCommonTestKotlin") ||
-        it.name.contains("UnitTestKotlin") // Android test tasks
+    tasks.named {
+        name.startsWith("compileTestKotlin") ||
+        name.startsWith("compileCommonTestKotlin") ||
+        name.contains("UnitTestKotlin") // Android test tasks
     }.configureEach {
         dependsOn(extractReadmeSnippets)
     }

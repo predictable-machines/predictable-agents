@@ -27,7 +27,7 @@ class ConventionsPlugin : Plugin<Project> {
 
 private fun Project.setup() {
     projectSetup()
-    androidSetup()
+//    androidSetup()
     dokkaSetup()
     javaSetup()
     kotlinSetup()
