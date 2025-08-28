@@ -4,6 +4,12 @@ on:
   release:
     types: [ released, prereleased ]
 
+permissions:
+  contents: read
+
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
 jobs:
   build:
     strategy:
