@@ -69,7 +69,7 @@ suspend fun main() {
         name = "assistant",
         description = "A helpful AI assistant",
         system = "You are a helpful assistant that provides clear and concise answers.",
-        model = Model.default // Uses gpt-4o-mini by default
+        model = Model.defaultModel // Uses gpt-4o-mini by default
     )
     
     // Simple text generation using invoke operator
@@ -99,7 +99,7 @@ suspend fun generateRecipe() {
         name = "chef",
         description = "Expert culinary AI",
         system = "You are a professional chef who creates detailed recipes.",
-        model = Model.default
+        model = Model.defaultModel
     )
     
     val recipe = agent.generateObject<String, Recipe>(
@@ -125,7 +125,7 @@ suspend fun streamStory() {
         name = "storyteller",
         description = "Creative story writer",
         system = "You are a creative writer who tells engaging stories.",
-        model = Model.default
+        model = Model.defaultModel
     )
     
     agent.stream("Tell me a short story about a robot learning to paint")
@@ -199,7 +199,7 @@ suspend fun useWeatherTool() {
         name = "weather_assistant",
         description = "Assistant for weather queries",
         system = "You are a helpful weather assistant.",
-        model = Model.default,
+        model = Model.defaultModel,
         tools = listOf(weatherTool)
     )
 
@@ -275,7 +275,7 @@ val agent = Agent(
     name = "chatbot",
     description = "Conversational AI assistant",
     system = "You are a helpful and friendly assistant.",
-    model = Model.default
+    model = Model.defaultModel
 )
 
 // Start a conversation
@@ -314,7 +314,7 @@ suspend fun streamAnalysis(data: String) {
         name = "analyzer",
         description = "Data analysis assistant",
         system = "You are a data analyst who provides detailed insights.",
-        model = Model.default
+        model = Model.defaultModel
     )
     
     agent.streamObject<String, AnalysisResult>(data)
@@ -384,7 +384,7 @@ val agent = Agent(
     name = "researcher",
     description = "Research assistant",
     system = "You are a research assistant. Use search to find information, then summarize the results.",
-    model = Model.default,
+    model = Model.defaultModel,
     tools = listOf(searchTool, summaryTool)
 )
 ```
@@ -420,21 +420,21 @@ val architectAgent = Agent(
     name = "architect",
     description = "Designs software architecture",
     system = "You are a software architect. Design clean, scalable systems.",
-    model = Model.default
+    model = Model.defaultModel
 )
 
 val coderAgent = Agent(
     name = "coder",
     description = "Implements code",
     system = "You are a senior developer. Write clean, efficient code.",
-    model = Model.default
+    model = Model.defaultModel
 )
 
 val testerAgent = Agent(
     name = "tester",
     description = "Creates test suites",
     system = "You are a QA engineer. Write comprehensive tests.",
-    model = Model.default
+    model = Model.defaultModel
 )
 
 // Convert agents to tools using the invoke() operator
@@ -451,7 +451,7 @@ val supervisor = Agent(
                |- architect: For system design
                |- coder: For implementation
                |- tester: For quality assurance""".trimMargin(),
-    model = Model.default,
+    model = Model.defaultModel,
     tools = listOf(architectTool, coderTool, testerTool)
 )
 
@@ -479,7 +479,7 @@ fun createAdaptiveSupervisor(capabilities: List<String>): Agent {
             name = capability,
             description = "Handles $capability tasks",
             system = "You are a $capability specialist.",
-            model = Model.default
+            model = Model.defaultModel
         )
         // Convert to tool with invoke()
         agent.invoke<String, String>()
@@ -489,7 +489,7 @@ fun createAdaptiveSupervisor(capabilities: List<String>): Agent {
         name = "adaptive_supervisor",
         description = "Adapts to different tasks",
         system = "Coordinate your team of specialists: ${capabilities.joinToString()}",
-        model = Model.default,
+        model = Model.defaultModel,
         tools = tools
     )
 }
@@ -514,7 +514,7 @@ The MCP module enables you to expose your AI agents and tools through the [Model
 
 ```kotlin
 import predictable.Tool
-import predictable.mcp.server.startKtorMCPServer
+import predictable.mcp.server.MCPServer.startKtorMCPServer
 import predictable.tool.KotlinSchema
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.runBlocking
@@ -561,7 +561,7 @@ fun main() = runBlocking {
 
 ```kotlin
 import io.ktor.server.application.*
-import predictable.mcp.server.configureMCP
+import predictable.mcp.server.MCPServer.configureMCP
 import predictable.Tool
 import predictable.tool.KotlinSchema
 import kotlinx.serialization.Serializable
@@ -602,14 +602,14 @@ fun Application.module() {
 ```kotlin
 import predictable.mcp.client.MCPClient
 import predictable.mcp.config.MCPConfig
-import predictable.mcp.config.MCPServer
+import predictable.mcp.config.MCPServerConfig
 import predictable.mcp.config.ServerConfig
 import kotlinx.serialization.json.*
 
 suspend fun connectToMCPServer() {
     val config = MCPConfig(
         servers = mapOf(
-            "remote-server" to MCPServer(
+            "remote-server" to MCPServerConfig(
                 name = "Remote Server",
                 namespace = "remote",
                 description = "Remote MCP server",
@@ -647,7 +647,7 @@ Since agents implement the `AI` interface, they can be directly exposed through 
 ```kotlin
 import predictable.Agent
 import predictable.agent.Model
-import predictable.mcp.server.startKtorMCPServer
+import predictable.mcp.server.MCPServer.startKtorMCPServer
 import kotlinx.coroutines.runBlocking
 
 fun main() = runBlocking {
@@ -655,14 +655,14 @@ fun main() = runBlocking {
         name = "code_reviewer",
         description = "Reviews code for quality and best practices",
         system = "You are an expert code reviewer. Provide constructive feedback.",
-        model = Model.default
+        model = Model.defaultModel
     )
 
     val testGenerator = Agent(
         name = "test_generator",
         description = "Generates unit tests for code",
         system = "You are a test engineer. Create comprehensive test cases.",
-        model = Model.default
+        model = Model.defaultModel
     )
 
     // Expose agents as MCP tools
@@ -707,7 +707,7 @@ class QASystem {
         system = """You are an expert Q&A system. 
                    |Provide accurate, well-sourced answers.
                    |Rate your confidence from 0.0 to 1.0.""".trimMargin(),
-        model = Model.default
+        model = Model.defaultModel
     )
     
     suspend fun answer(question: Question): Answer {
@@ -727,21 +727,21 @@ class MultiAgentSystem {
         name = "researcher",
         description = "Research specialist",
         system = "You are a research specialist who gathers information.",
-        model = Model.default
+        model = Model.defaultModel
     )
     
     private val analyst = Agent(
         name = "analyst",
         description = "Data analyst",
         system = "You analyze data and provide insights.",
-        model = Model.default
+        model = Model.defaultModel
     )
     
     private val writer = Agent(
         name = "writer",
         description = "Content writer",
         system = "You create clear, engaging content from analysis.",
-        model = Model.default
+        model = Model.defaultModel
     )
     
     suspend fun createReport(topic: String): String {

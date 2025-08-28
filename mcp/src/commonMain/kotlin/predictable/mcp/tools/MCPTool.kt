@@ -10,6 +10,7 @@ import predictable.tool.Elements
 import predictable.tool.KotlinSchema
 import predictable.tool.OutputSchema
 import predictable.tool.Schema
+import kotlin.jvm.JvmOverloads
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -34,7 +35,7 @@ import kotlin.uuid.Uuid
  * @property description Human-readable description of the tool's functionality
  * @property block The async function that executes the tool's logic
  */
-data class MCPTool(
+data class MCPTool @JvmOverloads constructor(
   val tool: Tool,
   override val id: String = Uuid.Companion.random().toString(),
   override val name: String = tool.name,

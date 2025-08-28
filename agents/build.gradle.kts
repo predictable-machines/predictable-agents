@@ -45,18 +45,33 @@ kotlin {
             }
         }
 
-        jvmMain { dependencies { implementation(libs.kotlin.reflect) } }
+        jvmMain {
+          dependencies {
+            implementation(libs.kotlin.reflect)
+            implementation(libs.kotlinx.coroutines.reactive)
+            implementation(libs.jackson.databind)
+            implementation(libs.jackson.module.kotlin)
+            implementation(libs.jackson.module.jsonschema)
+          }
+        }
         
         jvmTest {
             dependencies {
                 implementation(project(":mcp"))
                 implementation(libs.ktor.server.core)
                 implementation(libs.ktor.server.cio)
+                implementation("junit:junit:4.13.2")
+                implementation(libs.kotlin.test.junit)
             }
         }
         // Configure WASM JS source sets
         wasmJsMain { dependencies { implementation(libs.ktor.client.js) } }
     }
+}
+
+// Configure JVM test task to use JUnit
+tasks.named<Test>("jvmTest") {
+    useJUnit()
 }
 
 // Disable iOS tests due to Flow serializer issues

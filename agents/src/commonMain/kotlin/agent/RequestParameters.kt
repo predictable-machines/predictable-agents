@@ -2,6 +2,8 @@ package predictable.agent
 
 import kotlinx.serialization.Serializable
 import predictable.tool.ToolChoice
+import kotlin.jvm.JvmField
+import kotlin.jvm.JvmOverloads
 
 /**
  * Configuration parameters for AI model requests.
@@ -27,7 +29,7 @@ import predictable.tool.ToolChoice
  * @property maxSteps Maximum number of steps for multi-step operations
  */
 @Serializable
-data class RequestParameters(
+data class RequestParameters @JvmOverloads constructor(
   val temperature: Double? = null,
   val topP: Double? = null,
   val n: Int? = null,
@@ -54,6 +56,7 @@ data class RequestParameters(
      * Default request parameters with all optional values set to null.
      * Uses automatic tool choice and default max steps.
      */
-    val default: RequestParameters = RequestParameters()
+    @JvmField
+    val defaultParameters: RequestParameters = RequestParameters()
   }
 }

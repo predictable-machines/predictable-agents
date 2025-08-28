@@ -1,6 +1,7 @@
 package predictable.mcp.config
 
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmOverloads
 
 /**
  * Sealed class representing different types of MCP server connection configurations.
@@ -31,7 +32,7 @@ sealed class ServerConfig {
    * ```
    */
   @Serializable
-  data class SSE(
+  data class SSE @JvmOverloads constructor(
     val url: String,
     val headers: Map<String, String> = emptyMap(),
     val alwaysAllow: List<String> = emptyList(),
@@ -62,7 +63,7 @@ sealed class ServerConfig {
    * ```
    */
   @Serializable
-  data class STDIO(
+  data class STDIO @JvmOverloads constructor(
     val command: String,
     val args: List<String>,
     val env: Map<String, String> = emptyMap(),

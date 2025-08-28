@@ -63,7 +63,7 @@ class AgentToolsTest {
         name = "Test Agent With Tools",
         description = "A test agent with tools for unit tests",
         system = "You are a helpful assistant for testing purposes. Use the tools when appropriate.",
-        model = Model.default, // Using gpt-4o-mini as required
+        model = Model.defaultModel, // Using gpt-4o-mini as required
         tools = listOf(+::calculateResult, +::getWeather),
     )
 
