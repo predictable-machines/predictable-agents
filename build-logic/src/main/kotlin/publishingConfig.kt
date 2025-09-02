@@ -1,13 +1,21 @@
 package com.predictable.machines.build.logic
 
 import org.gradle.api.Project
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.kotlin.dsl.the
+import org.gradle.plugins.signing.SigningExtension
 
 fun Project.mavenPublishingSetup() {
     withMavenPublish {
+        if (isCI) {
+            pluginManager.apply(libs.plugins.signing.get().pluginId)
+            withSigning {
+                signInMemory()
+                sign(the<PublishingExtension>().publications)
+            }
+        }
+
         publishToMavenCentral()
-
-        if (isCI) signAllPublications()
-
         pom {
             name.set("Predictable Agents")
             description.set(
@@ -38,5 +46,18 @@ fun Project.mavenPublishingSetup() {
                 )
             }
         }
+    }
+}
+
+private fun SigningExtension.signInMemory() {
+    fun getProperty(name: String): String? =
+        project.providers.gradleProperty(name).orNull
+            ?: project.providers.environmentVariable(name).orNull
+
+    val gnupgKey: String? = getProperty("ORG_GRADLE_PROJECT_signingInMemoryKey")
+    val gnupgPassphrase: String? = getProperty("ORG_GRADLE_PROJECT_signingInMemoryKeyPassword")
+
+    if (gnupgKey != null && gnupgPassphrase != null) {
+        useInMemoryPgpKeys(gnupgKey, gnupgPassphrase)
     }
 }

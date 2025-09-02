@@ -113,6 +113,7 @@ kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref 
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.34.0" }
+signing = { id = "signing" }
 openApi = { id = "io.github.nomisrev.openapi-kt-plugin", version = "0.0.8"}
 
 # Convention plugins

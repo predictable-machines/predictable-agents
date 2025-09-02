@@ -7,6 +7,7 @@ import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import io.github.nomisrev.openapi.plugin.OpenApiConfig
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
+import org.gradle.plugins.signing.SigningExtension
 import org.jetbrains.dokka.gradle.DokkaExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -61,5 +62,11 @@ fun Project.withOpenApi(block: OpenApiConfig.() -> Unit) {
 fun Project.withMavenPublish(block: MavenPublishBaseExtension.() -> Unit) {
     pluginManager.withPlugin(libs.plugins.mavenPublish.get().pluginId) {
         configure<MavenPublishBaseExtension> { block(this) }
+    }
+}
+
+fun Project.withSigning(block: SigningExtension.() -> Unit) {
+    pluginManager.withPlugin(libs.plugins.signing.get().pluginId) {
+        configure<SigningExtension> { block(this) }
     }
 }
