@@ -3,9 +3,8 @@ package predictable;
 import org.junit.Test;
 import predictable.agent.Model;
 import predictable.agent.RequestParameters;
-import kotlin.Unit;
+
 import java.util.UUID;
-import predictable.tool.Schema;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -83,16 +82,10 @@ public class AgentToolExecutionTest {
 
     @Test
     public void testAgentExecutesJavaCalculatorTool() throws Exception {
-        // Create calculator tool from static method
-        Schema<CalculatorInput, CalculatorOutput> schema = new ClassSchema<>(
-            CalculatorInput.class,
-            CalculatorOutput.class
-        );
-        
-        Tool<CalculatorInput, CalculatorOutput> calculatorTool = Tool.create(
+        // Create calculator tool from static method using array type hack
+        Tool<CalculatorInput, CalculatorOutput> calculatorTool = Tool.of(
             "calculator",
             "Performs mathematical calculations",
-            schema,
             CalculatorUtils::calculate
         );
         
@@ -120,29 +113,17 @@ public class AgentToolExecutionTest {
 
     @Test
     public void testAgentExecutesMultipleJavaTools() throws Exception {
-        // Create weather tool
-        Schema<WeatherInput, WeatherOutput> weatherSchema = new ClassSchema<>(
-            WeatherInput.class,
-            WeatherOutput.class
-        );
-        
-        Tool<WeatherInput, WeatherOutput> weatherTool = Tool.create(
+        // Create weather tool using array type hack
+        Tool<WeatherInput, WeatherOutput> weatherTool = Tool.of(
             "get_weather",
             "Gets current weather for a city",
-            weatherSchema,
             WeatherService::getWeather
         );
         
-        // Create text analysis tool
-        Schema<TextAnalysisInput, TextAnalysisOutput> textSchema = new ClassSchema<>(
-            TextAnalysisInput.class,
-            TextAnalysisOutput.class
-        );
-        
-        Tool<TextAnalysisInput, TextAnalysisOutput> textTool = Tool.create(
+        // Create text analysis tool using array type hack
+        Tool<TextAnalysisInput, TextAnalysisOutput> textTool = Tool.of(
             "analyze_text",
             "Analyzes text for word count and other metrics",
-            textSchema,
             TextAnalyzer::analyze
         );
         
@@ -176,19 +157,13 @@ public class AgentToolExecutionTest {
 
     @Test
     public void testAgentExecutesToolWithLambdaFunction() throws Exception {
-        // Create a tool using a lambda function
-        Schema<String, String> schema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-        
+        // Create a tool using a lambda function with array type hack
         Function<String, String> reverseFunction = text -> 
             new StringBuilder(text).reverse().toString();
         
-        Tool<String, String> reverseTool = Tool.create(
+        Tool<String, String> reverseTool = Tool.of(
             "reverse_text",
             "Reverses the input text",
-            schema,
             reverseFunction
         );
         
@@ -211,16 +186,10 @@ public class AgentToolExecutionTest {
 
     @Test
     public void testAgentExecutesToolAsync() throws Exception {
-        // Create a simple math tool
-        Schema<Double, Double> schema = new ClassSchema<>(
-            Double.class,
-            Double.class
-        );
-        
-        Tool<Double, Double> squareTool = Tool.create(
+        // Create a simple math tool using array type hack
+        Tool<Double, Double> squareTool = Tool.of(
             "square",
             "Squares a number",
-            schema,
             x -> x * x
         );
         
@@ -245,16 +214,10 @@ public class AgentToolExecutionTest {
 
     @Test
     public void testAgentSelectsCorrectToolFromMultiple() throws Exception {
-        // Create multiple math tools
-        Schema<Integer, Integer> intSchema = new ClassSchema<>(
-            Integer.class,
-            Integer.class
-        );
-        
-        Tool<Integer, Integer> factorialTool = Tool.create(
+        // Create multiple math tools using array type hack
+        Tool<Integer, Integer> factorialTool = Tool.of(
             "factorial",
             "Calculates factorial of a number",
-            intSchema,
             n -> {
                 if (n <= 1) return 1;
                 int result = 1;
@@ -265,10 +228,9 @@ public class AgentToolExecutionTest {
             }
         );
         
-        Tool<Integer, Boolean> primeTool = Tool.create(
+        Tool<Integer, Boolean> primeTool = Tool.of(
             "is_prime",
             "Checks if a number is prime",
-            new ClassSchema<>(Integer.class, Boolean.class),
             n -> {
                 if (n <= 1) return false;
                 if (n <= 3) return true;
@@ -311,10 +273,6 @@ public class AgentToolExecutionTest {
         record SearchResult(String title, String description, double relevance) {}
         record SearchOutput(List<SearchResult> results, int totalCount) {}
         
-        Schema<SearchInput, SearchOutput> schema = new ClassSchema<>(
-            SearchInput.class,
-            SearchOutput.class
-        );
         
         Function<SearchInput, SearchOutput> searchFunction = input -> {
             // Simulate search results
@@ -340,10 +298,9 @@ public class AgentToolExecutionTest {
             return new SearchOutput(results, results.size());
         };
         
-        Tool<SearchInput, SearchOutput> searchTool = Tool.create(
+        Tool<SearchInput, SearchOutput> searchTool = Tool.of(
             "search",
             "Searches for documents based on query",
-            schema,
             searchFunction
         );
         
@@ -367,28 +324,16 @@ public class AgentToolExecutionTest {
 
     @Test
     public void testAgentChainsMultipleToolCalls() throws Exception {
-        // Create tools that can be chained
-        Schema<String, Integer> lengthSchema = new ClassSchema<>(
-            String.class,
-            Integer.class
-        );
-        
-        Tool<String, Integer> lengthTool = Tool.create(
+        // Create tools that can be chained using array type hack
+        Tool<String, Integer> lengthTool = Tool.of(
             "get_length",
             "Gets the length of a string",
-            lengthSchema,
             String::length
         );
         
-        Schema<Integer, String> romanSchema = new ClassSchema<>(
-            Integer.class,
-            String.class
-        );
-        
-        Tool<Integer, String> romanTool = Tool.create(
+        Tool<Integer, String> romanTool = Tool.of(
             "to_roman",
             "Converts number to Roman numerals",
-            romanSchema,
             n -> {
                 if (n <= 0 || n > 20) return "N/A";
                 String[] romans = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",

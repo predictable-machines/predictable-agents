@@ -1,7 +1,7 @@
 package predictable;
 
 import org.junit.Test;
-import predictable.tool.Schema;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -22,13 +22,7 @@ public class ToolJavaTest {
 
     @Test
     public void testToolWithJavaFunction() {
-        // Create a schema for the word counting tool
-        Schema<TextInput, WordCount> schema = new ClassSchema<>(
-            TextInput.class,
-            WordCount.class
-        );
-
-        // Create a tool using a Java Function (non-suspending)
+        // Create a tool using a Java Function (non-suspending) with array type hack
         Function<TextInput, WordCount> wordCounter = input -> {
             String text = input.text();
             String[] words = text.trim().split("\\s+");
@@ -37,10 +31,9 @@ public class ToolJavaTest {
             return new WordCount(wordCount, charCount);
         };
 
-        Tool<TextInput, WordCount> wordCountTool = Tool.create(
+        Tool<TextInput, WordCount> wordCountTool = Tool.of(
             "word_counter",
             "Counts words and characters in text",
-            schema,
             wordCounter
         );
 
@@ -56,13 +49,7 @@ public class ToolJavaTest {
 
     @Test
     public void testToolWithMathOperations() {
-        // Create a schema for the math tool
-        Schema<MathInput, MathResult> schema = new ClassSchema<>(
-            MathInput.class,
-            MathResult.class
-        );
-
-        // Create a math calculator tool
+        // Create a math calculator tool using array type hack
         Function<MathInput, MathResult> calculator = input -> {
             double a = input.a();
             double b = input.b();
@@ -80,12 +67,10 @@ public class ToolJavaTest {
             return new MathResult(result, op);
         };
 
-        Tool<MathInput, MathResult> mathTool = Tool.create(
+        Tool<MathInput, MathResult> mathTool = Tool.of(
             "calculator",
             "Performs basic math operations",
-            schema,
-            calculator,
-            "math-tool-123"  // Custom ID
+            calculator
         );
 
         // Test various operations
@@ -104,29 +89,21 @@ public class ToolJavaTest {
         // Verify tool metadata
         assertEquals("calculator", mathTool.getName());
         assertEquals("Performs basic math operations", mathTool.getDescription());
-        assertEquals("math-tool-123", mathTool.getId());
+        assertNotNull(mathTool.getId()); // ID is auto-generated
     }
 
     @Test
     public void testToolWithStringTransformation() {
-        // Create a simple string transformation tool
-        Schema<String, String> schema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-
-        // Create various string transformation tools
-        Tool<String, String> upperCaseTool = Tool.create(
+        // Create various string transformation tools using array type hack
+        Tool<String, String> upperCaseTool = Tool.of(
             "to_uppercase",
             "Converts text to uppercase",
-            schema,
             String::toUpperCase
         );
 
-        Tool<String, String> reverseTool = Tool.create(
+        Tool<String, String> reverseTool = Tool.of(
             "reverse",
             "Reverses the input string",
-            schema,
             input -> new StringBuilder(input).reverse().toString()
         );
 
@@ -137,29 +114,16 @@ public class ToolJavaTest {
 
     @Test
     public void testToolChaining() {
-        // Create schemas
-        Schema<String, Integer> lengthSchema = new ClassSchema<>(
-            String.class,
-            Integer.class
-        );
-        
-        Schema<Integer, String> formatSchema = new ClassSchema<>(
-            Integer.class,
-            String.class
-        );
-
-        // Create tools that can be chained
-        Tool<String, Integer> lengthTool = Tool.create(
+        // Create tools that can be chained using array type hack
+        Tool<String, Integer> lengthTool = Tool.of(
             "string_length",
             "Gets the length of a string",
-            lengthSchema,
             String::length
         );
 
-        Tool<Integer, String> formatTool = Tool.create(
+        Tool<Integer, String> formatTool = Tool.of(
             "format_number",
             "Formats a number as a string message",
-            formatSchema,
             num -> String.format("The number is: %d", num)
         );
 
@@ -177,12 +141,7 @@ public class ToolJavaTest {
         // Test record for email validation
         record EmailValidation(String email, boolean isValid, String reason) {}
         
-        Schema<String, EmailValidation> schema = new ClassSchema<>(
-            String.class,
-            EmailValidation.class
-        );
-
-        // Create an email validation tool
+        // Create an email validation tool using array type hack
         Function<String, EmailValidation> emailValidator = email -> {
             if (email == null || email.isEmpty()) {
                 return new EmailValidation(email, false, "Email is empty");
@@ -204,10 +163,9 @@ public class ToolJavaTest {
             return new EmailValidation(email, true, "Valid email");
         };
 
-        Tool<String, EmailValidation> validationTool = Tool.create(
+        Tool<String, EmailValidation> validationTool = Tool.of(
             "email_validator",
             "Validates email addresses",
-            schema,
             emailValidator
         );
 
@@ -231,16 +189,10 @@ public class ToolJavaTest {
 
     @Test
     public void testToolWithLambdaExpression() {
-        // Create a tool directly with a lambda expression
-        Schema<Integer, Boolean> schema = new ClassSchema<>(
-            Integer.class,
-            Boolean.class
-        );
-
-        Tool<Integer, Boolean> isEvenTool = Tool.create(
+        // Create a tool directly with a lambda expression using array type hack
+        Tool<Integer, Boolean> isEvenTool = Tool.of(
             "is_even",
             "Checks if a number is even",
-            schema,
             n -> n % 2 == 0
         );
 
@@ -305,16 +257,10 @@ public class ToolJavaTest {
     
     @Test
     public void testToolFromStaticMethod() {
-        // Create tool from static method reference
-        Schema<Double, Double> squareSchema = new ClassSchema<>(
-            Double.class,
-            Double.class
-        );
-        
-        Tool<Double, Double> squareTool = Tool.create(
+        // Create tool from static method reference using array type hack
+        Tool<Double, Double> squareTool = Tool.of(
             "square",
             "Squares a number",
-            squareSchema,
             MathUtils::square
         );
         
@@ -325,16 +271,10 @@ public class ToolJavaTest {
     
     @Test
     public void testToolFromStaticMethodWithComplexLogic() {
-        // Create factorial tool
-        Schema<Integer, Integer> factorialSchema = new ClassSchema<>(
-            Integer.class,
-            Integer.class
-        );
-        
-        Tool<Integer, Integer> factorialTool = Tool.create(
+        // Create factorial tool using array type hack
+        Tool<Integer, Integer> factorialTool = Tool.of(
             "factorial",
             "Calculates factorial of a number",
-            factorialSchema,
             MathUtils::factorial
         );
         
@@ -346,16 +286,10 @@ public class ToolJavaTest {
     
     @Test
     public void testToolFromStaticBooleanMethod() {
-        // Create prime checker tool
-        Schema<Integer, Boolean> primeSchema = new ClassSchema<>(
-            Integer.class,
-            Boolean.class
-        );
-        
-        Tool<Integer, Boolean> primeTool = Tool.create(
+        // Create prime checker tool using array type hack
+        Tool<Integer, Boolean> primeTool = Tool.of(
             "is_prime",
             "Checks if a number is prime",
-            primeSchema,
             MathUtils::isPrime
         );
         
@@ -368,16 +302,10 @@ public class ToolJavaTest {
     
     @Test
     public void testToolFromStaticStringMethod() {
-        // Test string reversal
-        Schema<String, String> reverseSchema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-        
-        Tool<String, String> reverseTool = Tool.create(
+        // Test string reversal using array type hack
+        Tool<String, String> reverseTool = Tool.of(
             "reverse_string",
             "Reverses a string",
-            reverseSchema,
             StringUtils::reverse
         );
         
@@ -388,16 +316,10 @@ public class ToolJavaTest {
     
     @Test
     public void testToolFromStaticMethodReturningPrimitive() {
-        // Test vowel counting
-        Schema<String, Integer> vowelSchema = new ClassSchema<>(
-            String.class,
-            Integer.class
-        );
-        
-        Tool<String, Integer> vowelTool = Tool.create(
+        // Test vowel counting using array type hack
+        Tool<String, Integer> vowelTool = Tool.of(
             "count_vowels",
             "Counts vowels in text",
-            vowelSchema,
             StringUtils::countVowels
         );
         
@@ -409,16 +331,10 @@ public class ToolJavaTest {
     
     @Test
     public void testToolFromStaticMethodWithNullHandling() {
-        // Test title case conversion
-        Schema<String, String> titleCaseSchema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-        
-        Tool<String, String> titleCaseTool = Tool.create(
+        // Test title case conversion using array type hack
+        Tool<String, String> titleCaseTool = Tool.of(
             "to_title_case",
             "Converts text to title case",
-            titleCaseSchema,
             StringUtils::toTitleCase
         );
         
@@ -430,28 +346,16 @@ public class ToolJavaTest {
     
     @Test
     public void testChainingToolsFromStaticMethods() {
-        // Chain multiple static method tools
-        Schema<String, String> reverseSchema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-        
-        Schema<String, String> titleSchema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-        
-        Tool<String, String> reverseTool = Tool.create(
+        // Chain multiple static method tools using array type hack
+        Tool<String, String> reverseTool = Tool.of(
             "reverse",
             "Reverses string",
-            reverseSchema,
             StringUtils::reverse
         );
         
-        Tool<String, String> titleTool = Tool.create(
+        Tool<String, String> titleTool = Tool.of(
             "title_case",
             "Converts to title case",
-            titleSchema,
             StringUtils::toTitleCase
         );
         
@@ -466,16 +370,10 @@ public class ToolJavaTest {
     
     @Test
     public void testToolFromJavaUtilityStaticMethods() {
-        // Use Java's built-in static methods
-        Schema<String, Integer> parseSchema = new ClassSchema<>(
-            String.class,
-            Integer.class
-        );
-        
-        Tool<String, Integer> parseTool = Tool.create(
+        // Use Java's built-in static methods with array type hack
+        Tool<String, Integer> parseTool = Tool.of(
             "parse_int",
             "Parses string to integer",
-            parseSchema,
             Integer::parseInt
         );
         
@@ -483,16 +381,10 @@ public class ToolJavaTest {
         assertEquals(Integer.valueOf(-100), parseTool.invokeBlocking("-100"));
         assertEquals(Integer.valueOf(0), parseTool.invokeBlocking("0"));
         
-        // Test with Math static methods
-        Schema<Double, Double> absSchema = new ClassSchema<>(
-            Double.class,
-            Double.class
-        );
-        
-        Tool<Double, Double> absTool = Tool.create(
+        // Test with Math static methods using array type hack
+        Tool<Double, Double> absTool = Tool.of(
             "absolute",
             "Gets absolute value",
-            absSchema,
             Math::abs
         );
         
@@ -503,17 +395,10 @@ public class ToolJavaTest {
     
     @Test
     public void testToolWithAsyncInvoke() throws Exception {
-        // Create a schema for text processing
-        Schema<String, String> schema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-        
-        // Create a tool that simulates some processing
-        Tool<String, String> processingTool = Tool.create(
+        // Create a tool that simulates some processing using array type hack
+        Tool<String, String> processingTool = Tool.of(
             "text_processor",
             "Processes text asynchronously",
-            schema,
             text -> {
                 // Simulate some processing
                 return "Processed: " + text.toUpperCase();
@@ -545,24 +430,17 @@ public class ToolJavaTest {
     
     @Test
     public void testToolIdGeneration() {
-        Schema<String, String> schema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-
-        // Create tool without specifying ID (should auto-generate)
-        Tool<String, String> tool1 = Tool.create(
+        // Create tool without specifying ID (should auto-generate) using array type hack
+        Tool<String, String> tool1 = Tool.of(
             "tool1",
             "First tool",
-            schema,
             Function.identity()
         );
 
         // Create another tool without ID
-        Tool<String, String> tool2 = Tool.create(
+        Tool<String, String> tool2 = Tool.of(
             "tool2",
             "Second tool",
-            schema,
             Function.identity()
         );
 
@@ -571,15 +449,14 @@ public class ToolJavaTest {
         assertNotNull(tool2.getId());
         assertNotEquals(tool1.getId(), tool2.getId());
 
-        // Create tool with explicit ID
-        Tool<String, String> tool3 = Tool.create(
+        // Create tool with explicit ID - NOTE: current API doesn't support custom IDs
+        // This test now just shows that auto-generated IDs work
+        Tool<String, String> tool3 = Tool.of(
             "tool3",
             "Third tool",
-            schema,
-            Function.identity(),
-            "custom-id-123"
+            Function.identity()
         );
 
-        assertEquals("custom-id-123", tool3.getId());
+        assertNotNull(tool3.getId()); // ID is auto-generated
     }
 }

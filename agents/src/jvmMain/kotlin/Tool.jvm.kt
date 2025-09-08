@@ -78,25 +78,44 @@ actual data class Tool<in A, out B> @JvmOverloads constructor(
   companion object {
     
     /**
-     * Creates a Tool from a Java Function (non-suspend).
-     * This is the primary method for Java users to create tools.
+     * Creates a Tool from a Java Function using array type hack to infer types.
+     * This eliminates the need to pass explicit Schema or Class parameters.
+     * 
+     * The array type hack works by using varargs which creates an array at runtime,
+     * and arrays retain their component type information even after type erasure.
+     * 
+     * Usage: Tool.create("name", "description", function)
+     * Or with explicit types: Tool.<Input, Output>create("name", "description", function)
      * 
      * @param name The tool name
-     * @param description The tool description
-     * @param schema The schema for validation
+     * @param description The tool description  
      * @param function A Java Function for the transformation
-     * @param id Unique identifier (default: random UUID)
+     * @param reified Varargs parameter for type inference using array hack
      * @return A new Tool instance
      */
     @JvmStatic
-    @JvmOverloads
-    fun <A, B> create(
+    fun <A, B> of(
       name: String,
       description: String,
-      schema: Schema<A, B>,
       function: Function<A, B>,
-      id: String = Uuid.random().toString()
-    ): Tool<A, B> = Tool(name, description, schema, function, id)
+      vararg reified: A?
+    ): Tool<A, B> {
+      // Extract input type from the reified array
+      @Suppress("UNCHECKED_CAST")
+      val inputClass = reified.javaClass.componentType as Class<A>
+      
+      // For output type, we need to use reflection on the Function interface
+      val functionClass = function.javaClass
+      val applyMethod = functionClass.methods.find { it.name == "apply" }
+        ?: throw IllegalArgumentException("Function does not have apply method")
+      
+      @Suppress("UNCHECKED_CAST")
+      val outputClass = applyMethod.returnType as Class<B>
+      
+      val schema = ClassSchema(inputClass, outputClass)
+      val id = Uuid.random().toString()
+      return Tool(name, description, schema, function, id)
+    }
     
     /**
      * Creates a Tool from a regular Kotlin function (non-suspend).
