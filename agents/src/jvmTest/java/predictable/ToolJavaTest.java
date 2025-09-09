@@ -6,6 +6,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import predictable.tool.Schema;
+
 import static org.junit.Assert.*;
 
 /**
@@ -90,6 +92,32 @@ public class ToolJavaTest {
         assertEquals("calculator", mathTool.getName());
         assertEquals("Performs basic math operations", mathTool.getDescription());
         assertNotNull(mathTool.getId()); // ID is auto-generated
+    }
+
+    @Test
+    public void testSchemaInferenceCapturesOutputType() {
+        @SuppressWarnings("unchecked")
+        Function<MathInput, MathResult> calculator =
+            (Function<MathInput, MathResult> & java.io.Serializable) input ->
+                new MathResult(input.a() + input.b(), input.operation());
+
+        Tool<MathInput, MathResult> mathTool = Tool.of(
+            "calculator",
+            "Performs basic math operations",
+            calculator
+        );
+
+        @SuppressWarnings("unchecked")
+        Schema<MathInput, MathResult> schema = (Schema<MathInput, MathResult>) mathTool.getSchema();
+
+        // Both input and output types are inferred correctly
+        assertEquals("MathInput", schema.inputSerialName());
+        assertEquals("MathResult", schema.outputSerialName());
+
+        // Jackson now deserializes output directly into MathResult
+        String json = schema.outputToJson(new MathResult(3.0, "add"));
+        Object rawOutput = schema.outputFromJson(json);
+        assertTrue(rawOutput instanceof MathResult);
     }
 
     @Test
