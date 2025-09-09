@@ -8,9 +8,7 @@ import predictable.mcp.client.MCPClient;
 import predictable.mcp.config.MCPConfig;
 import predictable.mcp.config.MCPServerConfig;
 import predictable.mcp.config.ServerConfig;
-import predictable.mcp.resources.MCPResource;
 import predictable.mcp.tools.MCPTool;
-import predictable.tool.Schema;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -42,11 +40,6 @@ public class MCPAgentIntegrationTest {
         List<Tool<?, ?>> tools = new ArrayList<>();
         
         // Calculator tool
-        Schema<CalculatorInput, CalculatorOutput> calcSchema = new ClassSchema<>(
-            CalculatorInput.class,
-            CalculatorOutput.class
-        );
-        
         Function<CalculatorInput, CalculatorOutput> calculator = input -> {
             double result = switch (input.operation()) {
                 case "add" -> input.a() + input.b();
@@ -58,37 +51,25 @@ public class MCPAgentIntegrationTest {
             return new CalculatorOutput(result, input.operation());
         };
         
-        Tool<CalculatorInput, CalculatorOutput> calculatorTool = Tool.create(
+        Tool<CalculatorInput, CalculatorOutput> calculatorTool = Tool.of(
             "calculator",
             "Performs basic arithmetic operations",
-            calcSchema,
             calculator
         );
         tools.add(calculatorTool);
         
         // Weather tool
-        Schema<WeatherInput, WeatherOutput> weatherSchema = new ClassSchema<>(
-            WeatherInput.class,
-            WeatherOutput.class
-        );
-        
         Function<WeatherInput, WeatherOutput> weatherService = input -> 
             new WeatherOutput(20.0, "Sunny", input.city());
         
-        Tool<WeatherInput, WeatherOutput> weatherTool = Tool.create(
+        Tool<WeatherInput, WeatherOutput> weatherTool = Tool.of(
             "weather_service",
             "Provides weather information for cities",
-            weatherSchema,
             weatherService
         );
         tools.add(weatherTool);
         
         // Text analysis tool
-        Schema<TextAnalysisInput, TextAnalysisOutput> textSchema = new ClassSchema<>(
-            TextAnalysisInput.class,
-            TextAnalysisOutput.class
-        );
-        
         Function<TextAnalysisInput, TextAnalysisOutput> textAnalyzer = input -> {
             String[] words = input.text().split("\\s+");
             int wordCount = words.length;
@@ -97,10 +78,9 @@ public class MCPAgentIntegrationTest {
             return new TextAnalysisOutput(wordCount, charCount, result);
         };
         
-        Tool<TextAnalysisInput, TextAnalysisOutput> textTool = Tool.create(
+        Tool<TextAnalysisInput, TextAnalysisOutput> textTool = Tool.of(
             "text_analyzer",
             "Analyzes text and provides statistics",
-            textSchema,
             textAnalyzer
         );
         tools.add(textTool);
@@ -183,15 +163,9 @@ public class MCPAgentIntegrationTest {
     @Test
     public void testAgentWithMCPToolsAsync() throws Exception {
         // Create a simple test tool
-        Schema<String, String> schema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-        
-        Tool<String, String> echoTool = Tool.create(
+        Tool<String, String> echoTool = Tool.of(
             "echo",
             "Echoes the input text",
-            schema,
             input -> "Echo: " + input
         );
         
@@ -245,15 +219,9 @@ public class MCPAgentIntegrationTest {
     @Test
     public void testMCPClientBlockingMethods() throws Exception {
         // Create a simple test tool
-        Schema<String, String> schema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-        
-        Tool<String, String> testTool = Tool.create(
+        Tool<String, String> testTool = Tool.of(
             "test_tool",
             "A test tool",
-            schema,
             input -> "Processed: " + input
         );
         
@@ -314,15 +282,9 @@ public class MCPAgentIntegrationTest {
     @Test
     public void testMCPClientAsyncMethods() throws Exception {
         // Create a simple test tool
-        Schema<String, String> schema = new ClassSchema<>(
-            String.class,
-            String.class
-        );
-        
-        Tool<String, String> testTool = Tool.create(
+        Tool<String, String> testTool = Tool.of(
             "async_tool",
             "An async test tool",
-            schema,
             input -> "Async: " + input
         );
         
