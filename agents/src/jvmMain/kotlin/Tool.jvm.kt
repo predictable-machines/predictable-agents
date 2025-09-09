@@ -10,6 +10,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
+import java.lang.invoke.SerializedLambda
+import java.lang.reflect.ParameterizedType
+import java.lang.reflect.Type
+import java.lang.reflect.WildcardType
 
 /**
  * JVM implementation of Tool that supports both suspend and regular functions.
@@ -103,18 +107,57 @@ actual data class Tool<in A, out B> @JvmOverloads constructor(
       // Extract input type from the reified array
       @Suppress("UNCHECKED_CAST")
       val inputClass = reified.javaClass.componentType as Class<A>
-      
-      // For output type, we need to use reflection on the Function interface
-      val functionClass = function.javaClass
-      val applyMethod = functionClass.methods.find { it.name == "apply" }
-        ?: throw IllegalArgumentException("Function does not have apply method")
-      
-      @Suppress("UNCHECKED_CAST")
-      val outputClass = applyMethod.returnType as Class<B>
-      
+
+      val outputClass = inferOutputClass(function)
+
       val schema = ClassSchema(inputClass, outputClass)
       val id = Uuid.random().toString()
       return Tool(name, description, schema, function, id)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <A, B> inferOutputClass(function: Function<A, B>): Class<B> {
+      val functionClass = function.javaClass
+
+      // 1. Try to read generic parameters from the implemented Function interface
+      val genericOutput = functionClass.genericInterfaces
+        .asSequence()
+        .filterIsInstance<ParameterizedType>()
+        .firstOrNull { it.rawType == Function::class.java }
+        ?.actualTypeArguments?.getOrNull(1)
+        ?.let { toClass<B>(it) }
+
+      if (genericOutput != null && genericOutput != Any::class.java) {
+        return genericOutput
+      }
+
+      // 2. Fallback to SerializedLambda for lambdas implementing Serializable
+      val serializedLambda = try {
+        val writeReplace = functionClass.getDeclaredMethod("writeReplace").apply { isAccessible = true }
+        writeReplace.invoke(function) as? SerializedLambda
+      } catch (_: Throwable) {
+        null
+      }
+
+      if (serializedLambda != null) {
+        val returnDesc = serializedLambda.implMethodSignature.substringAfter(')').substringBeforeLast(';')
+        val className = returnDesc.removePrefix("L").replace('/', '.')
+        return Class.forName(className) as Class<B>
+      }
+
+      // 3. Fallback to raw apply return type (will be Object for most lambdas)
+      val applyMethod = functionClass.methods.find { it.name == "apply" }
+        ?: throw IllegalArgumentException("Function does not have apply method")
+
+      return applyMethod.returnType as Class<B>
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <B> toClass(type: Type): Class<B>? = when (type) {
+      is Class<*> -> type as Class<B>
+      is ParameterizedType -> toClass<B>(type.rawType)
+      is WildcardType -> type.upperBounds.firstOrNull()?.let { toClass<B>(it) }
+      else -> null
     }
     
     /**
