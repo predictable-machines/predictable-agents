@@ -1,15 +1,14 @@
 package predictable.agent
 
-import com.aallam.openai.client.OpenAIHost
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmField
 
 /**
  * Configuration for an AI model endpoint.
- * 
+ *
  * Specifies the API endpoint and model name to use for AI operations.
  * Supports various providers including OpenAI, OpenRouter, and local models.
- * 
+ *
  * @property apiUrl The base URL for the AI provider's API
  * @property name The specific model identifier to use (e.g., "gpt-4", "claude-3")
  */
@@ -23,7 +22,7 @@ data class Model(
      * The standard OpenAI API base URL.
      */
     @JvmField
-    val openAIBaseUrl = OpenAIHost.OpenAI.baseUrl
+    val openAIBaseUrl = "https://api.openai.com"
     
     /**
      * Default model configuration.

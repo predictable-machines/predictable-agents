@@ -94,11 +94,7 @@ val weatherToolForCombinedTest = Tool(
 
 /**
  * This test class tests the combination of structured output and tools in both streaming and non-streaming modes.
- * 
- * Note: The non-streaming tests may fail due to an issue in the OpenAIProvider class.
- * The issue is in the chatCompletionStructured method, which throws an exception when
- * it fails to parse the structured response. This is a known issue and will be fixed in a future update.
- * 
+ *
  * The streaming tests demonstrate the combination of structured output and tools in streaming mode.
  */
 class AgentStructuredOutputWithToolsTest {

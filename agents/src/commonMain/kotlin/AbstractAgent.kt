@@ -5,7 +5,7 @@ package predictable
 import dev.scottpierce.envvar.EnvVar
 import kotlinx.coroutines.flow.Flow
 import predictable.agent.*
-import predictable.agent.providers.openai.OpenAIProvider
+import predictable.agent.providers.AgentProvider
 import predictable.tool.InputSchema
 import predictable.tool.KotlinSchema
 import predictable.tool.OutputSchema
@@ -56,19 +56,16 @@ abstract class AbstractAgent @JvmOverloads constructor(
   @field:JvmField val parameters: RequestParameters = RequestParameters.defaultParameters
 ) {
 
-  private val provider: OpenAIProvider by lazy {
+  private val provider: AgentProvider by lazy {
     val key =
       apiKey.ifBlank {
         EnvVar["OPENAI_API_KEY"] ?:
+        EnvVar["ANTHROPIC_API_KEY"] ?:
+        EnvVar["GOOGLE_API_KEY"] ?:
         EnvVar["OPENROUTER_API_KEY"] ?:
         ""
       }
-    OpenAIProvider(
-      apiKey = key,
-      baseUrl = model.apiUrl.ifBlank {
-        EnvVar["OPENAI_API_URL"] ?: throw IllegalArgumentException("API URL or env OPENAI_API_URL is required")
-      }
-    )
+    AgentProvider(apiKey = key)
   }
 
   // ==================== Tool Creation ====================
