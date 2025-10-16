@@ -60,7 +60,7 @@ class AgentProvider(
     toolCallBack: ToolCallback?
   ): AgentResponse.Text {
     val client = getClient(model)
-    val prompt = buildPrompt(messages)
+    val prompt = buildPrompt(messages, parameters, tools.isNotEmpty())
     val llModel = ModelProvider.fromModel(model)
     val koogTools = convertTools(tools)
     val responses = executeWithTools(client, prompt, llModel, koogTools, tools, messages, parameters, toolCallBack)
@@ -90,7 +90,7 @@ class AgentProvider(
     val client = getClient(model)
     val schemaInstruction = createSchemaInstruction(schema)
     val messagesWithSchema = listOf(schemaInstruction) + messages
-    val prompt = buildPrompt(messagesWithSchema)
+    val prompt = buildPrompt(messagesWithSchema, parameters, tools.isNotEmpty())
     val llModel = ModelProvider.fromModel(model)
     val koogTools = convertTools(tools)
     val responses = executeWithTools(client, prompt, llModel, koogTools, tools, messagesWithSchema, parameters, toolCallBack)
@@ -157,9 +157,52 @@ class AgentProvider(
       ClientFactory.create(model, apiKey)
     }
 
-  private fun buildPrompt(messages: List<Message>): Prompt {
+  private fun buildPrompt(messages: List<Message>, parameters: RequestParameters = RequestParameters.defaultParameters, hasTools: Boolean = false): Prompt {
     val koogMessages = messages.flatMap { convertMessage(it) }
-    return Prompt(koogMessages, Uuid.random().toString())
+    val llmParams = convertRequestParameters(parameters, hasTools)
+    return Prompt(koogMessages, Uuid.random().toString(), llmParams)
+  }
+
+  private fun convertRequestParameters(params: RequestParameters, hasTools: Boolean): ai.koog.prompt.params.LLMParams {
+    val toolChoice = if (hasTools) convertToolChoice(params.toolChoice) else null
+    val additionalProps = buildAdditionalProperties(params)
+
+    return ai.koog.prompt.params.LLMParams(
+      temperature = params.temperature,
+      maxTokens = params.maxCompletionTokens,
+      numberOfChoices = params.n,
+      user = params.user,
+      toolChoice = toolChoice,
+      additionalProperties = if (additionalProps.isEmpty()) null else additionalProps
+    )
+  }
+
+  private fun convertToolChoice(choice: predictable.tool.ToolChoice): ai.koog.prompt.params.LLMParams.ToolChoice? =
+    when (choice) {
+      is predictable.tool.ToolChoice.Mode -> when (choice.value) {
+        "auto" -> ai.koog.prompt.params.LLMParams.ToolChoice.Auto
+        "none" -> ai.koog.prompt.params.LLMParams.ToolChoice.None
+        "required" -> ai.koog.prompt.params.LLMParams.ToolChoice.Required
+        else -> ai.koog.prompt.params.LLMParams.ToolChoice.Auto
+      }
+      is predictable.tool.ToolChoice.Named -> choice.function?.name?.let {
+        ai.koog.prompt.params.LLMParams.ToolChoice.Named(it)
+      } ?: ai.koog.prompt.params.LLMParams.ToolChoice.Auto
+    }
+
+  private fun buildAdditionalProperties(params: RequestParameters): Map<String, kotlinx.serialization.json.JsonElement> {
+    val props = mutableMapOf<String, kotlinx.serialization.json.JsonElement>()
+    params.topP?.let { props["top_p"] = kotlinx.serialization.json.JsonPrimitive(it) }
+    params.stop?.let { props["stop"] = kotlinx.serialization.json.JsonArray(it.map { s -> kotlinx.serialization.json.JsonPrimitive(s) }) }
+    params.presencePenalty?.let { props["presence_penalty"] = kotlinx.serialization.json.JsonPrimitive(it) }
+    params.frequencyPenalty?.let { props["frequency_penalty"] = kotlinx.serialization.json.JsonPrimitive(it) }
+    params.logitBias?.let { bias ->
+      props["logit_bias"] = kotlinx.serialization.json.JsonObject(bias.mapValues { kotlinx.serialization.json.JsonPrimitive(it.value) })
+    }
+    params.store?.let { props["store"] = kotlinx.serialization.json.JsonPrimitive(it) }
+    params.logprobs?.let { props["logprobs"] = kotlinx.serialization.json.JsonPrimitive(it) }
+    params.topLogprobs?.let { props["top_logprobs"] = kotlinx.serialization.json.JsonPrimitive(it) }
+    return props
   }
 
   private fun convertMessage(message: Message): List<KoogMessage> {
@@ -290,7 +333,7 @@ class AgentProvider(
     if (calls.isEmpty() || step >= parameters.maxSteps) return responses
     addAssistantWithCalls(messages, calls)
     executeTools(calls, tools, messages, toolCallBack)
-    val prompt = buildPrompt(messages)
+    val prompt = buildPrompt(messages, parameters, true)
     val newResponses = executeKoog(client, prompt, llModel, koogTools)
     return handleTools(client, newResponses, llModel, koogTools, tools, messages, parameters, toolCallBack, step + 1)
   }
@@ -337,7 +380,7 @@ class AgentProvider(
     step: Int,
     modelId: String
   ): Flow<StreamResponse<String>> = flow {
-    val prompt = buildPrompt(messages)
+    val prompt = buildPrompt(messages, parameters, true)
     val stream = streamKoog(client, prompt, llModel, koogTools)
     val calls = mutableListOf<StreamFrame.ToolCall>()
     stream.collect { frame ->
@@ -387,7 +430,7 @@ class AgentProvider(
     step: Int,
     modelId: String
   ): Flow<StreamResponse<T>> = flow {
-    val prompt = buildPrompt(messages)
+    val prompt = buildPrompt(messages, parameters, true)
     val stream = streamKoog(client, prompt, llModel, koogTools)
     val calls = mutableListOf<StreamFrame.ToolCall>()
     stream.collect { frame ->
@@ -458,7 +501,7 @@ class AgentProvider(
       val client = getClient(model)
       val error = Message.user("Error parsing JSON: ${e.message}. Try again with valid JSON.")
       val messages = responses.map { convertResponseToMessage(it) } + error
-      val prompt = buildPrompt(messages)
+      val prompt = buildPrompt(messages, parameters, tools.isNotEmpty())
       val koogTools = convertTools(tools)
       val newResponses = executeWithTools(client, prompt, llModel, koogTools, tools, messages, parameters, toolCallBack)
       return parseStructured(newResponses, schema, model, llModel, tools, parameters, toolCallBack, retryCount + 1, maxRetries)
