@@ -94,7 +94,7 @@ class AgentProvider(
     val llModel = ModelProvider.fromModel(model)
     val koogTools = convertTools(tools)
     val responses = executeWithTools(client, prompt, llModel, koogTools, tools, messagesWithSchema, parameters, toolCallBack)
-    return parseStructured(responses, schema, model, llModel, tools, parameters, toolCallBack, 0)
+    return parseStructured(responses, messagesWithSchema, schema, model, llModel, tools, parameters, toolCallBack, 0)
   }
 
   /**
@@ -485,6 +485,7 @@ class AgentProvider(
 
   private suspend fun <T> parseStructured(
     responses: List<KoogMessage.Response>,
+    originalMessages: List<Message>,
     schema: OutputSchema<T>,
     model: Model,
     llModel: LLModel,
@@ -500,11 +501,11 @@ class AgentProvider(
       if (retryCount >= maxRetries) throw IllegalStateException("Failed after $maxRetries retries: ${e.message}", e)
       val client = getClient(model)
       val error = Message.user("Error parsing JSON: ${e.message}. Try again with valid JSON.")
-      val messages = responses.map { convertResponseToMessage(it) } + error
+      val messages = originalMessages + responses.map { convertResponseToMessage(it) } + error
       val prompt = buildPrompt(messages, parameters, tools.isNotEmpty())
       val koogTools = convertTools(tools)
       val newResponses = executeWithTools(client, prompt, llModel, koogTools, tools, messages, parameters, toolCallBack)
-      return parseStructured(newResponses, schema, model, llModel, tools, parameters, toolCallBack, retryCount + 1, maxRetries)
+      return parseStructured(newResponses, originalMessages, schema, model, llModel, tools, parameters, toolCallBack, retryCount + 1, maxRetries)
     }
   }
 
