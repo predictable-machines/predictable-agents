@@ -206,19 +206,54 @@ class AgentProvider(
 
   private fun createParam(name: String, schema: JsonObject): ToolParameterDescriptor {
     val desc = schema["description"]?.jsonPrimitive?.content ?: ""
-    val enumValues = schema["enum"]?.jsonArray?.map { it.jsonPrimitive.content }
-    val type = if (enumValues != null) ToolParameterType.Enum(enumValues.toTypedArray())
-      else mapType(schema["type"]?.jsonPrimitive?.content ?: "string")
+    val type = mapJsonSchemaToKoogType(schema)
     return ToolParameterDescriptor(name, desc, type)
   }
 
-  private fun mapType(type: String): ToolParameterType =
-    when (type) {
+  private fun mapJsonSchemaToKoogType(schema: JsonObject): ToolParameterType {
+    val enumValues = schema["enum"]?.jsonArray?.map { it.jsonPrimitive.content }
+    if (enumValues != null) return ToolParameterType.Enum(enumValues.toTypedArray())
+
+    val typeStr = schema["type"]?.jsonPrimitive?.content ?: "string"
+    return when (typeStr) {
       "string" -> ToolParameterType.String
-      "integer", "number" -> ToolParameterType.Integer
+      "integer" -> ToolParameterType.Integer
+      "number" -> mapNumberType(schema)
       "boolean" -> ToolParameterType.Boolean
+      "array" -> mapArrayType(schema)
+      "object" -> mapObjectType(schema)
       else -> ToolParameterType.String
     }
+  }
+
+  private fun mapNumberType(schema: JsonObject): ToolParameterType {
+    val format = schema["format"]?.jsonPrimitive?.content
+    return when (format) {
+      "float", "double" -> ToolParameterType.Float
+      else -> ToolParameterType.Integer
+    }
+  }
+
+  private fun mapArrayType(schema: JsonObject): ToolParameterType {
+    val items = schema["items"]?.jsonObject ?: return ToolParameterType.List(ToolParameterType.String)
+    val itemType = mapJsonSchemaToKoogType(items)
+    return ToolParameterType.List(itemType)
+  }
+
+  private fun mapObjectType(schema: JsonObject): ToolParameterType {
+    val props = schema["properties"]?.jsonObject ?: return ToolParameterType.Object(emptyList())
+    val required = schema["required"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+    val additionalProps = schema["additionalProperties"]?.let { elem ->
+      try { elem.jsonPrimitive.content.toBoolean() } catch (e: Exception) { null }
+    }
+    val additionalPropsType = schema["additionalProperties"]?.jsonObject?.let { mapJsonSchemaToKoogType(it) }
+
+    val properties = props.map { (key, value) ->
+      ToolParameterDescriptor(key, value.jsonObject["description"]?.jsonPrimitive?.content ?: "", mapJsonSchemaToKoogType(value.jsonObject))
+    }
+
+    return ToolParameterType.Object(properties, required, additionalProps, additionalPropsType)
+  }
 
   private suspend fun executeKoog(client: LLMClient, prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<KoogMessage.Response> =
     client.execute(prompt, model, tools)
