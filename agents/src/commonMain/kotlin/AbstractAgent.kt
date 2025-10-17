@@ -2,9 +2,13 @@
 
 package predictable
 
+import arrow.core.raise.either
 import dev.scottpierce.envvar.EnvVar
 import kotlinx.coroutines.flow.Flow
 import predictable.agent.*
+import predictable.agent.compression.CompressionError
+import predictable.agent.compression.HistoryManager
+import predictable.agent.compression.HistoryManagerImpl
 import predictable.agent.providers.AgentProvider
 import predictable.tool.InputSchema
 import predictable.tool.KotlinSchema
@@ -68,6 +72,10 @@ abstract class AbstractAgent @JvmOverloads constructor(
     AgentProvider(apiKey = key)
   }
 
+  private val historyManager: HistoryManager by lazy {
+    HistoryManagerImpl(provider, model)
+  }
+
   // ==================== Tool Creation ====================
   
   /**
@@ -129,17 +137,23 @@ abstract class AbstractAgent @JvmOverloads constructor(
 
   /**
    * Creates a tool for streaming structured object generation.
-   * 
+   *
    * @param I The input type
    * @param O The output type to stream
    * @param requestParameters Optional parameters to override defaults
    * @return A Tool that transforms input to a stream of output chunks
    */
-  inline fun <reified I, reified O> streamObject(requestParameters: RequestParameters = parameters): Tool<I, Flow<StreamResponse<O>>> =
-    Tool {
-      val schema = KotlinSchema<I, O>()
-      structuredStream(AgentInput.Structured(it, schema, requestParameters), schema).value
+  inline fun <reified I, reified O> streamObject(requestParameters: RequestParameters = parameters): Tool<I, Flow<StreamResponse<O>>> {
+    val schema = KotlinSchema<I, O>()
+    return createTool(
+      name = "${name}_stream",
+      description = "Stream $description",
+      schema = schema,
+      id = Uuid.random().toString()
+    ) { input: I ->
+      structuredStream(AgentInput.Structured(input, schema, requestParameters), schema).value
     }
+  }
 
   /**
    * Streams a structured object generation process.
@@ -228,33 +242,33 @@ abstract class AbstractAgent @JvmOverloads constructor(
   
   /**
    * Streams text responses for a conversation history.
-   * 
+   *
    * @param input List of messages representing the conversation history
    * @param requestParameters Optional parameters to override defaults
    * @return A Flow emitting stream responses containing partial text results
    */
   @JvmSynthetic
-  fun stream(input: List<Message>, requestParameters: RequestParameters = parameters): Flow<StreamResponse<String>> =
+  suspend fun stream(input: List<Message>, requestParameters: RequestParameters = parameters): Flow<StreamResponse<String>> =
     stream(AgentInput.Messages(input, requestParameters)).value
 
   /**
    * Streams text responses for the given text input.
-   * 
+   *
    * Generates responses incrementally for better user experience.
-   * 
+   *
    * @param input The text prompt to process
    * @param requestParameters Optional parameters to override defaults
    * @return A Flow emitting stream responses containing partial text results
-   * 
+   *
    * @sample predictable.samples.agentStreamingSample
    */
   @JvmSynthetic
-  fun stream(input: String, requestParameters: RequestParameters = parameters): Flow<StreamResponse<String>> =
+  suspend fun stream(input: String, requestParameters: RequestParameters = parameters): Flow<StreamResponse<String>> =
     stream(AgentInput.Text(input, requestParameters)).value
 
   /**
    * Streams text responses for structured input with explicit schema.
-   * 
+   *
    * @param T The input type
    * @param input The input value to process
    * @param schema Schema for input validation
@@ -262,7 +276,7 @@ abstract class AbstractAgent @JvmOverloads constructor(
    * @return A Flow emitting stream responses containing partial text results
    */
   @JvmSynthetic
-  fun <T> stream(
+  suspend fun <T> stream(
     input: T,
     schema: InputSchema<T>,
     requestParameters: RequestParameters = parameters
@@ -271,16 +285,17 @@ abstract class AbstractAgent @JvmOverloads constructor(
 
   /**
    * Streams structured responses with automatic schema inference.
-   * 
+   *
    * @param T The input type
    * @param R The output type to stream
    * @param input The input value to process
    * @param requestParameters Optional parameters to override defaults
    * @return A Flow emitting stream responses containing partial results of type [R]
-   * 
+   *
    * @sample predictable.samples.agentStructuredStreamingSample
    */
-  inline fun <reified T, reified R> stream(
+  @JvmSynthetic
+  suspend inline fun <reified T, reified R> stream(
     input: T,
     requestParameters: RequestParameters = parameters
   ): Flow<StreamResponse<R>> {
@@ -295,19 +310,21 @@ abstract class AbstractAgent @JvmOverloads constructor(
   
   /**
    * Internal method to create a streaming response for any input type.
-   * 
+   *
    * @param input The agent input wrapper
    * @return AgentResponse.StringStream with the streaming flow and metadata
    */
   @JvmSynthetic
-  fun stream(input: AgentInput): AgentResponse.StringStream =
-    provider.chatCompletionStream(
-      messages = messages(input),
+  suspend fun stream(input: AgentInput): AgentResponse.StringStream {
+    val msgs = messages(input)
+    return provider.chatCompletionStream(
+      messages = msgs,
       model = model,
       tools = tools,
       parameters = input.requestParameters,
       toolCallBack = toolCallBack
     )
+  }
 
   /**
    * Internal method to generate text output for any input type.
@@ -327,25 +344,27 @@ abstract class AbstractAgent @JvmOverloads constructor(
 
   /**
    * Internal method to create a structured streaming response.
-   * 
+   *
    * @param T The output type
    * @param input The agent input wrapper
    * @param schema Schema for output validation
    * @return AgentResponse.StructuredStream with the streaming flow and metadata
    */
   @JvmSynthetic
-  fun <T> structuredStream(
+  suspend fun <T> structuredStream(
     input: AgentInput,
     schema: OutputSchema<T>
-  ): AgentResponse.StructuredStream<T> =
-    provider.chatCompletionStructuredStream(
-      messages = messages(input),
+  ): AgentResponse.StructuredStream<T> {
+    val msgs = messages(input)
+    return provider.chatCompletionStructuredStream(
+      messages = msgs,
       model = model,
       tools = tools,
       schema = schema,
       parameters = input.requestParameters,
       toolCallBack = toolCallBack
     )
+  }
 
   /**
    * Internal method to generate structured output.
@@ -366,30 +385,64 @@ abstract class AbstractAgent @JvmOverloads constructor(
       toolCallBack = toolCallBack
     )
 
+  private fun extractConversation(input: AgentInput): List<Message> = when (input) {
+    is AgentInput.Messages -> input.value
+    is AgentInput.Text -> listOf(Message.user(input.value))
+    is AgentInput.Structured<*> -> {
+      val schema: InputSchema<Any?> = input.schema as InputSchema<Any?>
+      val json = schema.inputToJson(input.value)
+      listOf(Message.user(json))
+    }
+  }
+
+  private fun requiresHistoryManagement(params: RequestParameters): Boolean =
+    params.compressionStrategy != null ||
+    params.maxTokens != null ||
+    params.maxHistorySize != null
+
+  private suspend fun applyHistoryManagement(
+    messages: List<Message>,
+    params: RequestParameters
+  ): List<Message> = try {
+    executeHistoryManagement(messages, params)
+  } catch (e: Exception) {
+    println("WARN: History management failed: ${e.message}, continuing with full history")
+    messages
+  }
+
+  private suspend fun executeHistoryManagement(
+    messages: List<Message>,
+    params: RequestParameters
+  ): List<Message> = either {
+    historyManager.apply(messages, params)
+  }.fold(
+    ifLeft = { logCompressionWarning(it); messages },
+    ifRight = { compressed -> logCompressionResult(compressed, params); compressed }
+  )
+
+  private fun logCompressionWarning(error: CompressionError) =
+    println("WARN: History compression failed: $error")
+
+  private fun logCompressionResult(result: List<Message>, params: RequestParameters) {
+    if (result.size < 2 && params.compressionStrategy != null) {
+      println("WARN: Compression with strategy ${params.compressionStrategy} resulted in ${result.size} message(s)")
+    }
+  }
+
   /**
    * Converts agent input into a list of messages for the AI model.
-   * 
+   *
    * Prepends the system prompt and handles different input types.
-   * 
+   * Applies history management (compression) if configured in request parameters.
+   *
    * @param input The agent input to convert
    * @return List of messages ready for the AI model
    */
-  protected fun messages(input: AgentInput): List<Message> {
-    val conversation = when (input) {
-      is AgentInput.Messages -> input.value
-      is AgentInput.Text -> listOf(
-        Message.user(input.value)
-      )
-
-      is AgentInput.Structured<*> -> {
-        val schema: InputSchema<Any?> = input.schema as InputSchema<Any?>
-        val value: Any? = input.value
-        val json = schema.inputToJson(value)
-        listOf(Message.user(json.toString()))
-      }
-    }// tODO handle history ?
-    // TODO we need to trim the conversation to adjust it within the model context window
-    return listOf(Message.system(system)) + conversation
+  protected suspend fun messages(input: AgentInput): List<Message> {
+    val allMessages = listOf(Message.system(system)) + extractConversation(input)
+    return if (requiresHistoryManagement(input.requestParameters)) {
+      applyHistoryManagement(allMessages, input.requestParameters)
+    } else allMessages
   }
 }
 

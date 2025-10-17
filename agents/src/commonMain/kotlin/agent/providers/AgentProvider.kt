@@ -1,26 +1,43 @@
 package predictable.agent.providers
 
+import ai.koog.agents.core.agent.config.AIAgentConfig
+import ai.koog.agents.core.agent.context.AIAgentLLMContext
+import ai.koog.agents.core.dsl.extension.HistoryCompressionStrategy
+import ai.koog.agents.core.environment.AIAgentEnvironment
+import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolParameterDescriptor
 import ai.koog.agents.core.tools.ToolParameterType
+import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.LLMClient
+import ai.koog.prompt.executor.llms.SingleLLMPromptExecutor
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message as KoogMessage
+import ai.koog.prompt.message.RequestMetaInfo
+import ai.koog.prompt.message.ResponseMetaInfo
+import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import arrow.core.raise.Raise
+import arrow.core.raise.catch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import predictable.AI
 import predictable.agent.*
+import predictable.agent.compression.CompressionError
 import predictable.tool.OutputSchema
 import predictable.tool.ToolCallback
 
@@ -163,11 +180,11 @@ class AgentProvider(
     return Prompt(koogMessages, Uuid.random().toString(), llmParams)
   }
 
-  private fun convertRequestParameters(params: RequestParameters, hasTools: Boolean): ai.koog.prompt.params.LLMParams {
+  private fun convertRequestParameters(params: RequestParameters, hasTools: Boolean): LLMParams {
     val toolChoice = if (hasTools) convertToolChoice(params.toolChoice) else null
     val additionalProps = buildAdditionalProperties(params)
 
-    return ai.koog.prompt.params.LLMParams(
+    return LLMParams(
       temperature = params.temperature,
       maxTokens = params.maxCompletionTokens,
       numberOfChoices = params.n,
@@ -177,37 +194,37 @@ class AgentProvider(
     )
   }
 
-  private fun convertToolChoice(choice: predictable.tool.ToolChoice): ai.koog.prompt.params.LLMParams.ToolChoice? =
+  private fun convertToolChoice(choice: predictable.tool.ToolChoice): LLMParams.ToolChoice? =
     when (choice) {
       is predictable.tool.ToolChoice.Mode -> when (choice.value) {
-        "auto" -> ai.koog.prompt.params.LLMParams.ToolChoice.Auto
-        "none" -> ai.koog.prompt.params.LLMParams.ToolChoice.None
-        "required" -> ai.koog.prompt.params.LLMParams.ToolChoice.Required
-        else -> ai.koog.prompt.params.LLMParams.ToolChoice.Auto
+        "auto" -> LLMParams.ToolChoice.Auto
+        "none" -> LLMParams.ToolChoice.None
+        "required" -> LLMParams.ToolChoice.Required
+        else -> LLMParams.ToolChoice.Auto
       }
       is predictable.tool.ToolChoice.Named -> choice.function?.name?.let {
-        ai.koog.prompt.params.LLMParams.ToolChoice.Named(it)
-      } ?: ai.koog.prompt.params.LLMParams.ToolChoice.Auto
+        LLMParams.ToolChoice.Named(it)
+      } ?: LLMParams.ToolChoice.Auto
     }
 
-  private fun buildAdditionalProperties(params: RequestParameters): Map<String, kotlinx.serialization.json.JsonElement> {
-    val props = mutableMapOf<String, kotlinx.serialization.json.JsonElement>()
-    params.topP?.let { props["top_p"] = kotlinx.serialization.json.JsonPrimitive(it) }
-    params.stop?.let { props["stop"] = kotlinx.serialization.json.JsonArray(it.map { s -> kotlinx.serialization.json.JsonPrimitive(s) }) }
-    params.presencePenalty?.let { props["presence_penalty"] = kotlinx.serialization.json.JsonPrimitive(it) }
-    params.frequencyPenalty?.let { props["frequency_penalty"] = kotlinx.serialization.json.JsonPrimitive(it) }
+  private fun buildAdditionalProperties(params: RequestParameters): Map<String, JsonElement> {
+    val props = mutableMapOf<String, JsonElement>()
+    params.topP?.let { props["top_p"] = JsonPrimitive(it) }
+    params.stop?.let { props["stop"] = JsonArray(it.map { s -> JsonPrimitive(s) }) }
+    params.presencePenalty?.let { props["presence_penalty"] = JsonPrimitive(it) }
+    params.frequencyPenalty?.let { props["frequency_penalty"] = JsonPrimitive(it) }
     params.logitBias?.let { bias ->
-      props["logit_bias"] = kotlinx.serialization.json.JsonObject(bias.mapValues { kotlinx.serialization.json.JsonPrimitive(it.value) })
+      props["logit_bias"] = JsonObject(bias.mapValues { JsonPrimitive(it.value) })
     }
-    params.store?.let { props["store"] = kotlinx.serialization.json.JsonPrimitive(it) }
-    params.logprobs?.let { props["logprobs"] = kotlinx.serialization.json.JsonPrimitive(it) }
-    params.topLogprobs?.let { props["top_logprobs"] = kotlinx.serialization.json.JsonPrimitive(it) }
+    params.store?.let { props["store"] = JsonPrimitive(it) }
+    params.logprobs?.let { props["logprobs"] = JsonPrimitive(it) }
+    params.topLogprobs?.let { props["top_logprobs"] = JsonPrimitive(it) }
     return props
   }
 
   private fun convertMessage(message: Message): List<KoogMessage> {
-    val requestInfo = ai.koog.prompt.message.RequestMetaInfo(kotlinx.datetime.Clock.System.now())
-    val responseInfo = ai.koog.prompt.message.ResponseMetaInfo.Empty
+    val requestInfo = RequestMetaInfo(Clock.System.now())
+    val responseInfo = ResponseMetaInfo.Empty
     return when (message.role) {
       MessageRole.System -> listOf(KoogMessage.System(message.content, requestInfo))
       MessageRole.User -> listOf(KoogMessage.User(message.content, requestInfo))
@@ -217,7 +234,7 @@ class AgentProvider(
     }
   }
 
-  private fun convertAssistant(message: Message, info: ai.koog.prompt.message.ResponseMetaInfo): List<KoogMessage> =
+  private fun convertAssistant(message: Message, info: ResponseMetaInfo): List<KoogMessage> =
     if (message.toolCalls != null && message.toolCalls.isNotEmpty()) {
       message.toolCalls.map { KoogMessage.Tool.Call(it.id, it.name, it.arguments, info) }
     } else {
@@ -229,17 +246,17 @@ class AgentProvider(
     return Message.system("You must respond ONLY with valid JSON that matches this exact schema: $json. Do not include any explanatory text, only the JSON object.")
   }
 
-  private fun convertTools(tools: List<AI<*, *>>): List<ToolDescriptor> =
+  internal fun convertTools(tools: List<AI<*, *>>): List<ToolDescriptor> =
     tools.map { convertTool(it) }
 
-  private fun convertTool(tool: AI<*, *>): ToolDescriptor {
+  internal fun convertTool(tool: AI<*, *>): ToolDescriptor {
     val schemaJson = tool.schema.inputJsonSchema()
     val schema = Json.parseToJsonElement(schemaJson).jsonObject
     val params = extractParams(schema)
     return ToolDescriptor(tool.name, tool.description, params.first, params.second)
   }
 
-  private fun extractParams(schema: JsonObject): Pair<List<ToolParameterDescriptor>, List<ToolParameterDescriptor>> {
+  internal fun extractParams(schema: JsonObject): Pair<List<ToolParameterDescriptor>, List<ToolParameterDescriptor>> {
     val props = schema["properties"]?.jsonObject ?: return emptyList<ToolParameterDescriptor>() to emptyList()
     val required = schema["required"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
     val requiredParams = props.filter { it.key in required }.map { createParam(it.key, it.value.jsonObject) }
@@ -413,7 +430,7 @@ class AgentProvider(
     toolCallBack: ToolCallback?,
     emit: suspend (StreamResponse<*>) -> Unit
   ) {
-    val koogCalls = calls.map { KoogMessage.Tool.Call(it.id, it.name, it.content, ai.koog.prompt.message.ResponseMetaInfo.Empty) }
+    val koogCalls = calls.map { KoogMessage.Tool.Call(it.id, it.name, it.content, ResponseMetaInfo.Empty) }
     addAssistantWithCalls(messages, koogCalls)
     koogCalls.forEach { call -> executeToolWithEmit(call, tools, messages, toolCallBack, emit) }
   }
@@ -531,7 +548,7 @@ class AgentProvider(
       is KoogMessage.Tool.Result -> Message(MessageRole.ToolResult, response.content, toolCallId = response.id, name = response.tool)
     }
 
-  private fun createMetadata(info: ai.koog.prompt.message.ResponseMetaInfo, modelId: String): AgentMetadata =
+  private fun createMetadata(info: ResponseMetaInfo, modelId: String): AgentMetadata =
     AgentMetadata(
       promptTokens = info.inputTokensCount ?: 0,
       completionTokens = info.outputTokensCount ?: 0,
@@ -549,4 +566,53 @@ class AgentProvider(
 
   private fun <T> tryParse(text: String, schema: OutputSchema<T>): StreamResponse.Chunk<T>? =
     try { StreamResponse.Chunk(schema.outputFromJson(text)) } catch (e: Exception) { null }
+
+  // Compression support (all functions ≤10 lines)
+
+  context(raise: Raise<CompressionError>)
+  internal suspend fun compressHistory(
+    strategy: predictable.agent.CompressionStrategy,
+    messages: List<Message>,
+    model: Model
+  ): List<Message> {
+    val koogStrategy = CompressionConverter.toKoog(strategy)
+    val context = createCompressionContext(messages, model)
+    return executeCompression(context, koogStrategy)
+  }
+
+  private fun createCompressionContext(messages: List<Message>, model: Model): AIAgentLLMContext {
+    val client = getClient(model)
+    val executor = SingleLLMPromptExecutor(client)
+    val llModel = ModelProvider.fromModel(model)
+    val koogMessages = messages.flatMap { convertMessage(it) }
+    val prompt = Prompt(koogMessages, Uuid.random().toString(), LLMParams())
+    val config = AIAgentConfig(prompt, llModel, 1)
+    return AIAgentLLMContext(emptyList(), ToolRegistry.EMPTY, prompt, llModel, executor, MinimalEnvironment, config, Clock.System)
+  }
+
+  context(raise: Raise<CompressionError>)
+  private suspend fun executeCompression(
+    context: AIAgentLLMContext,
+    strategy: HistoryCompressionStrategy
+  ): List<Message> = catch({
+    context.writeSession {
+      strategy.compress(this, emptyList())
+      prompt.messages.map { convertKoogToMessage(it) }
+    }
+  }) { e: Throwable -> raise.raise(CompressionError.CompressionFailed(strategy.toString(), e)) }
+
+  private fun convertKoogToMessage(msg: KoogMessage): Message = when (msg) {
+    is KoogMessage.System -> Message(MessageRole.System, msg.content)
+    is KoogMessage.User -> Message(MessageRole.User, msg.content)
+    is KoogMessage.Assistant -> Message(MessageRole.Assistant, msg.content)
+    is KoogMessage.Tool.Call -> Message(MessageRole.Assistant, msg.content, toolCalls = listOf(predictable.tool.ToolCallRequest(msg.id ?: "", msg.tool, msg.content)))
+    is KoogMessage.Tool.Result -> Message(MessageRole.ToolResult, msg.content, toolCallId = msg.id, name = msg.tool)
+  }
+
+  private companion object {
+    val MinimalEnvironment = object : AIAgentEnvironment {
+      override suspend fun executeTools(calls: List<KoogMessage.Tool.Call>) = emptyList<ReceivedToolResult>()
+      override suspend fun reportProblem(e: Throwable) { throw e }
+    }
+  }
 }

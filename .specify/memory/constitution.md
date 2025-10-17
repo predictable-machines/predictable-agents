@@ -203,6 +203,27 @@ Before implementing ANY migration that involves adopting an external library (es
 
 **Rationale**: External libraries may have fundamentally different architectures than anticipated. Jumping directly to implementation without thorough research risks architectural mismatches, wasted effort, and technical debt. A specialized agent captures library-specific knowledge for consistent application across all migration tasks.
 
+**Koog Integration Mandatory Research Protocol (NON-NEGOTIABLE)**:
+Before implementing ANY task that involves Koog AI framework integration, developers MUST:
+
+1. **Research Koog's actual implementation** in `/tmp/koog` repository for:
+   - How Koog handles the specific feature (compression, streaming, persistence, etc.)
+   - What patterns and constraints Koog enforces
+   - Integration points and session lifecycle
+   - Type conversions and adapters required
+   - Actual behavior vs. assumed behavior
+2. **Document findings** in the feature specification before creating tasks
+3. **Verify assumptions** - Do NOT assume how Koog works; READ the code
+4. **Only then proceed** with task implementation
+
+**Rationale**: Koog is our underlying agent framework. Implementing features without understanding Koog's actual architecture leads to:
+- Architectural mismatches (wrapping vs. reimplementation decisions)
+- Duplicate functionality (implementing what Koog already provides)
+- Missing constraints (edge cases that don't exist in Koog)
+- Integration bugs (incorrect session lifecycle, type conversions)
+
+Every Koog integration task MUST start with research in `/tmp/koog` to validate assumptions and understand actual behavior.
+
 ### AI Agent Integration
 
 #### Claude Code Agent Selection (MANDATORY)
