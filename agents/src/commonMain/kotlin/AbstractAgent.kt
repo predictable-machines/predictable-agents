@@ -61,16 +61,19 @@ abstract class AbstractAgent @JvmOverloads constructor(
 ) {
 
   private val provider: AgentProvider by lazy {
-    val key =
-      apiKey.ifBlank {
-        EnvVar["OPENAI_API_KEY"] ?:
-        EnvVar["ANTHROPIC_API_KEY"] ?:
-        EnvVar["GOOGLE_API_KEY"] ?:
-        EnvVar["OPENROUTER_API_KEY"] ?:
-        ""
-      }
+    val key = apiKey.ifBlank { selectApiKeyForProvider(model.provider) }
     AgentProvider(apiKey = key)
   }
+
+  private fun selectApiKeyForProvider(provider: Provider): String =
+    EnvVar[provider.envKeyName()] ?: selectFallbackKey()
+
+  private fun selectFallbackKey(): String =
+    EnvVar["OPENAI_API_KEY"] ?:
+    EnvVar["ANTHROPIC_API_KEY"] ?:
+    EnvVar["GOOGLE_API_KEY"] ?:
+    EnvVar["OPENROUTER_API_KEY"] ?:
+    ""
 
   private val historyManager: HistoryManager by lazy {
     HistoryManagerImpl(provider, model)

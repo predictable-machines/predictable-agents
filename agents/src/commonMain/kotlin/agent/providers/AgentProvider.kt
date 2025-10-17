@@ -81,7 +81,7 @@ class AgentProvider(
     val llModel = ModelProvider.fromModel(model)
     val koogTools = convertTools(tools)
     val (responses, allMessages) = executeWithTools(client, prompt, llModel, koogTools, tools, messages, parameters, toolCallBack)
-    return convertTextResponse(responses, allMessages, model.name)
+    return convertTextResponse(responses, allMessages, model)
   }
 
   /**
@@ -134,7 +134,7 @@ class AgentProvider(
     val client = getClient(model)
     val llModel = ModelProvider.fromModel(model)
     val koogTools = convertTools(tools)
-    val stream = streamWithTools(client, llModel, koogTools, tools, messages, parameters, toolCallBack, 1, model.name)
+    val stream = streamWithTools(client, llModel, koogTools, tools, messages, parameters, toolCallBack, 1, model)
     return AgentResponse.StringStream(stream)
   }
 
@@ -163,7 +163,7 @@ class AgentProvider(
     val messagesWithSchema = listOf(schemaInstruction) + messages
     val llModel = ModelProvider.fromModel(model)
     val koogTools = convertTools(tools)
-    val stream = streamStructuredWithTools(client, llModel, koogTools, tools, messagesWithSchema, schema, parameters, toolCallBack, 1, model.name)
+    val stream = streamStructuredWithTools(client, llModel, koogTools, tools, messagesWithSchema, schema, parameters, toolCallBack, 1, model)
     return AgentResponse.StructuredStream(stream)
   }
 
@@ -415,7 +415,7 @@ class AgentProvider(
     parameters: RequestParameters,
     toolCallBack: ToolCallback?,
     step: Int,
-    modelId: String
+    model: Model
   ): Flow<StreamResponse<String>> = flow {
     val prompt = buildPrompt(messages, parameters, true)
     val stream = streamKoog(client, prompt, llModel, koogTools)
@@ -424,7 +424,7 @@ class AgentProvider(
       when (frame) {
         is StreamFrame.Append -> emit(StreamResponse.Chunk(frame.text))
         is StreamFrame.ToolCall -> handleStreamToolCall(frame, toolCalls, this)
-        is StreamFrame.End -> handleStreamEnd(frame, toolCalls, messages, tools, toolCallBack, client, llModel, koogTools, parameters, step, modelId, this)
+        is StreamFrame.End -> handleStreamEnd(frame, toolCalls, messages, tools, toolCallBack, client, llModel, koogTools, parameters, step, model, this)
       }
     }
   }
@@ -449,14 +449,14 @@ class AgentProvider(
     koogTools: List<ToolDescriptor>,
     parameters: RequestParameters,
     step: Int,
-    modelId: String,
+    model: Model,
     emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<String>>
   ) {
-    val metadata = createMetadata(frame.metaInfo, modelId)
+    val metadata = createMetadata(frame.metaInfo, model)
     emitter.emit(StreamResponse.Metadata(metadata))
     if (toolCalls.isNotEmpty() && step < parameters.maxSteps) {
       val updatedMessages = executeAndCollectStreamTools(toolCalls, messages, tools, toolCallBack, emitter)
-      streamWithTools(client, llModel, koogTools, tools, updatedMessages, parameters, toolCallBack, step + 1, modelId).collect { emitter.emit(it) }
+      streamWithTools(client, llModel, koogTools, tools, updatedMessages, parameters, toolCallBack, step + 1, model).collect { emitter.emit(it) }
     } else {
       emitter.emit(StreamResponse.End)
     }
@@ -511,7 +511,7 @@ class AgentProvider(
     parameters: RequestParameters,
     toolCallBack: ToolCallback?,
     step: Int,
-    modelId: String
+    model: Model
   ): Flow<StreamResponse<T>> = flow {
     val prompt = buildPrompt(messages, parameters, true)
     val stream = streamKoog(client, prompt, llModel, koogTools)
@@ -520,7 +520,7 @@ class AgentProvider(
       when (frame) {
         is StreamFrame.Append -> tryParse(frame.text, schema)?.let { emit(it) }
         is StreamFrame.ToolCall -> handleStructuredStreamToolCall(frame, toolCalls, this)
-        is StreamFrame.End -> handleStructuredStreamEnd(frame, toolCalls, messages, tools, toolCallBack, client, llModel, koogTools, schema, parameters, step, modelId, this)
+        is StreamFrame.End -> handleStructuredStreamEnd(frame, toolCalls, messages, tools, toolCallBack, client, llModel, koogTools, schema, parameters, step, model, this)
       }
     }
   }
@@ -546,14 +546,14 @@ class AgentProvider(
     schema: OutputSchema<T>,
     parameters: RequestParameters,
     step: Int,
-    modelId: String,
+    model: Model,
     emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<T>>
   ) {
-    val metadata = createMetadata(frame.metaInfo, modelId)
+    val metadata = createMetadata(frame.metaInfo, model)
     emitter.emit(StreamResponse.Metadata(metadata))
     if (toolCalls.isNotEmpty() && step < parameters.maxSteps) {
       val updatedMessages = executeAndCollectStructuredStreamTools(toolCalls, messages, tools, toolCallBack, emitter)
-      streamStructuredWithTools(client, llModel, koogTools, tools, updatedMessages, schema, parameters, toolCallBack, step + 1, modelId).collect { emitter.emit(it) }
+      streamStructuredWithTools(client, llModel, koogTools, tools, updatedMessages, schema, parameters, toolCallBack, step + 1, model).collect { emitter.emit(it) }
     } else {
       emitter.emit(StreamResponse.End)
     }
@@ -612,7 +612,7 @@ class AgentProvider(
     maxRetries: Int = 3
   ): AgentResponse.Structured<T> {
     try {
-      return convertStructuredResponse(responses, allMessages, schema, model.name)
+      return convertStructuredResponse(responses, allMessages, schema, model)
     } catch (e: Exception) {
       if (retryCount >= maxRetries) throw IllegalStateException("Failed after $maxRetries retries: ${e.message}", e)
       val client = getClient(model)
@@ -625,19 +625,19 @@ class AgentProvider(
     }
   }
 
-  private fun convertTextResponse(responses: List<KoogMessage.Response>, allMessages: List<Message>, modelId: String): AgentResponse.Text {
+  private fun convertTextResponse(responses: List<KoogMessage.Response>, allMessages: List<Message>, model: Model): AgentResponse.Text {
     val assistant = responses.filterIsInstance<KoogMessage.Assistant>().lastOrNull()
       ?: throw IllegalStateException("No assistant response")
-    val metadata = accumulateMetadata(responses, modelId)
+    val metadata = accumulateMetadata(responses, model)
     val completeMessages = allMessages + responses.map { convertResponseToMessage(it) }
     return AgentResponse.Text(assistant.content, metadata, completeMessages)
   }
 
-  private fun <T> convertStructuredResponse(responses: List<KoogMessage.Response>, allMessages: List<Message>, schema: OutputSchema<T>, modelId: String): AgentResponse.Structured<T> {
+  private fun <T> convertStructuredResponse(responses: List<KoogMessage.Response>, allMessages: List<Message>, schema: OutputSchema<T>, model: Model): AgentResponse.Structured<T> {
     val assistant = responses.filterIsInstance<KoogMessage.Assistant>().lastOrNull()
       ?: throw IllegalStateException("No assistant response")
     val parsed = schema.outputFromJson(assistant.content)
-    val metadata = accumulateMetadata(responses, modelId)
+    val metadata = accumulateMetadata(responses, model)
     val completeMessages = allMessages + responses.map { convertResponseToMessage(it) }
     return AgentResponse.Structured(parsed, metadata, completeMessages)
   }
@@ -649,16 +649,16 @@ class AgentProvider(
       is KoogMessage.Tool.Result -> Message(MessageRole.ToolResult, response.content, toolCallId = response.id, name = response.tool)
     }
 
-  private fun createMetadata(info: ResponseMetaInfo, modelId: String): AgentMetadata =
+  private fun createMetadata(info: ResponseMetaInfo, model: Model): AgentMetadata =
     AgentMetadata(
       promptTokens = info.inputTokensCount ?: 0,
       completionTokens = info.outputTokensCount ?: 0,
       totalTokens = info.totalTokensCount ?: 0,
-      model = modelId,
-      provider = inferProviderName(modelId)
+      model = model.name,
+      provider = model.provider.providerName()
     )
 
-  private fun accumulateMetadata(responses: List<KoogMessage.Response>, modelId: String): AgentMetadata {
+  private fun accumulateMetadata(responses: List<KoogMessage.Response>, model: Model): AgentMetadata {
     val (prompt, completion, total) = responses.fold(Triple(0, 0, 0)) { acc, response ->
       val info = extractMetaInfo(response)
       Triple(
@@ -667,20 +667,13 @@ class AgentProvider(
         acc.third + (info.totalTokensCount ?: 0)
       )
     }
-    return AgentMetadata(prompt, completion, total, modelId, inferProviderName(modelId))
+    return AgentMetadata(prompt, completion, total, model.name, model.provider.providerName())
   }
 
   private fun extractMetaInfo(response: KoogMessage.Response): ResponseMetaInfo = when (response) {
     is KoogMessage.Assistant -> response.metaInfo
     is KoogMessage.Tool.Call -> response.metaInfo
     is KoogMessage.Tool.Result -> response.metaInfo
-  }
-
-  private fun inferProviderName(modelId: String): String = when {
-    modelId.startsWith("gpt-") -> "openai"
-    modelId.startsWith("claude-") -> "anthropic"
-    modelId.startsWith("gemini-") -> "google"
-    else -> "openai"  // Default to openai for custom/unknown models
   }
 
   private fun <T> tryParse(text: String, schema: OutputSchema<T>): StreamResponse.Chunk<T>? =

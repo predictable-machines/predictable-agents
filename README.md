@@ -149,13 +149,17 @@ The `AI<A, B>` interface is the foundation of the library, representing any tran
 An `Agent` is a high-level AI assistant that can generate text, structured data, and use tools:
 
 ```kotlin
+import predictable.agent.Model
+import predictable.agent.Provider
+
 val agent = Agent(
     name = "assistant",
     description = "General purpose AI assistant",
     system = "System prompt defining behavior",
     model = Model(
         apiUrl = "https://api.openai.com/v1/",
-        name = "gpt-4o"
+        name = "gpt-4o",
+        provider = Provider.OpenAI
     ),
     tools = emptyList() // Optional: Add tools here
 )
@@ -336,17 +340,20 @@ suspend fun streamAnalysis(data: String) {
 ```kotlin
 import predictable.Agent
 import predictable.agent.Model
+import predictable.agent.Provider
 
 // Use OpenRouter
 val openRouterModel = Model(
     apiUrl = "https://openrouter.ai/api/v1/",
-    name = "anthropic/claude-3-opus"
+    name = "anthropic/claude-3-opus",
+    provider = Provider.OpenRouter
 )
 
 // Use local model
 val localModel = Model(
     apiUrl = "http://localhost:8080/v1/",
-    name = "llama-3.1-8b"
+    name = "llama-3.1-8b",
+    provider = Provider.Ollama
 )
 
 val agent = Agent(
