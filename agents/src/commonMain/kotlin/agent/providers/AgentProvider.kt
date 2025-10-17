@@ -80,8 +80,8 @@ class AgentProvider(
     val prompt = buildPrompt(messages, parameters, tools.isNotEmpty())
     val llModel = ModelProvider.fromModel(model)
     val koogTools = convertTools(tools)
-    val responses = executeWithTools(client, prompt, llModel, koogTools, tools, messages, parameters, toolCallBack)
-    return convertTextResponse(responses, model.name)
+    val (responses, allMessages) = executeWithTools(client, prompt, llModel, koogTools, tools, messages, parameters, toolCallBack)
+    return convertTextResponse(responses, allMessages, model.name)
   }
 
   /**
@@ -110,8 +110,8 @@ class AgentProvider(
     val prompt = buildPrompt(messagesWithSchema, parameters, tools.isNotEmpty())
     val llModel = ModelProvider.fromModel(model)
     val koogTools = convertTools(tools)
-    val responses = executeWithTools(client, prompt, llModel, koogTools, tools, messagesWithSchema, parameters, toolCallBack)
-    return parseStructured(responses, messagesWithSchema, schema, model, llModel, tools, parameters, toolCallBack, 0)
+    val (responses, allMessages) = executeWithTools(client, prompt, llModel, koogTools, tools, messagesWithSchema, parameters, toolCallBack)
+    return parseStructured(responses, allMessages, messagesWithSchema, schema, model, llModel, tools, parameters, toolCallBack, 0)
   }
 
   /**
@@ -134,7 +134,7 @@ class AgentProvider(
     val client = getClient(model)
     val llModel = ModelProvider.fromModel(model)
     val koogTools = convertTools(tools)
-    val stream = streamWithTools(client, llModel, koogTools, tools, messages.toMutableList(), parameters, toolCallBack, 1, model.name)
+    val stream = streamWithTools(client, llModel, koogTools, tools, messages, parameters, toolCallBack, 1, model.name)
     return AgentResponse.StringStream(stream)
   }
 
@@ -160,7 +160,7 @@ class AgentProvider(
   ): AgentResponse.StructuredStream<T> {
     val client = getClient(model)
     val schemaInstruction = createSchemaInstruction(schema)
-    val messagesWithSchema = (listOf(schemaInstruction) + messages).toMutableList()
+    val messagesWithSchema = listOf(schemaInstruction) + messages
     val llModel = ModelProvider.fromModel(model)
     val koogTools = convertTools(tools)
     val stream = streamStructuredWithTools(client, llModel, koogTools, tools, messagesWithSchema, schema, parameters, toolCallBack, 1, model.name)
@@ -207,20 +207,24 @@ class AgentProvider(
       } ?: LLMParams.ToolChoice.Auto
     }
 
-  private fun buildAdditionalProperties(params: RequestParameters): Map<String, JsonElement> {
-    val props = mutableMapOf<String, JsonElement>()
-    params.topP?.let { props["top_p"] = JsonPrimitive(it) }
-    params.stop?.let { props["stop"] = JsonArray(it.map { s -> JsonPrimitive(s) }) }
-    params.presencePenalty?.let { props["presence_penalty"] = JsonPrimitive(it) }
-    params.frequencyPenalty?.let { props["frequency_penalty"] = JsonPrimitive(it) }
-    params.logitBias?.let { bias ->
-      props["logit_bias"] = JsonObject(bias.mapValues { JsonPrimitive(it.value) })
-    }
-    params.store?.let { props["store"] = JsonPrimitive(it) }
-    params.logprobs?.let { props["logprobs"] = JsonPrimitive(it) }
-    params.topLogprobs?.let { props["top_logprobs"] = JsonPrimitive(it) }
-    return props
-  }
+  private fun buildAdditionalProperties(params: RequestParameters): Map<String, JsonElement> =
+    (buildBasicProps(params) + buildAdvancedProps(params)).toMap()
+
+  private fun buildBasicProps(params: RequestParameters): List<Pair<String, JsonElement>> =
+    listOfNotNull(
+      params.topP?.let { "top_p" to JsonPrimitive(it) },
+      params.stop?.let { "stop" to JsonArray(it.map { s -> JsonPrimitive(s) }) },
+      params.presencePenalty?.let { "presence_penalty" to JsonPrimitive(it) },
+      params.frequencyPenalty?.let { "frequency_penalty" to JsonPrimitive(it) }
+    )
+
+  private fun buildAdvancedProps(params: RequestParameters): List<Pair<String, JsonElement>> =
+    listOfNotNull(
+      params.logitBias?.let { bias -> "logit_bias" to JsonObject(bias.mapValues { JsonPrimitive(it.value) }) },
+      params.store?.let { "store" to JsonPrimitive(it) },
+      params.logprobs?.let { "logprobs" to JsonPrimitive(it) },
+      params.topLogprobs?.let { "top_logprobs" to JsonPrimitive(it) }
+    )
 
   private fun convertMessage(message: Message): List<KoogMessage> {
     val requestInfo = RequestMetaInfo(Clock.System.now())
@@ -330,53 +334,69 @@ class AgentProvider(
     messages: List<Message>,
     parameters: RequestParameters,
     toolCallBack: ToolCallback?
-  ): List<KoogMessage.Response> {
+  ): Pair<List<KoogMessage.Response>, List<Message>> {
     val responses = executeKoog(client, prompt, llModel, koogTools)
-    return handleTools(client, responses, llModel, koogTools, tools, messages.toMutableList(), parameters, toolCallBack, 1)
+    return handleTools(client, responses, messages, llModel, koogTools, tools, parameters, toolCallBack, 1)
   }
 
   private suspend fun handleTools(
     client: LLMClient,
     responses: List<KoogMessage.Response>,
+    messages: List<Message>,
     llModel: LLModel,
     koogTools: List<ToolDescriptor>,
     tools: List<AI<*, *>>,
-    messages: MutableList<Message>,
     parameters: RequestParameters,
     toolCallBack: ToolCallback?,
     step: Int
-  ): List<KoogMessage.Response> {
+  ): Pair<List<KoogMessage.Response>, List<Message>> {
     val calls = responses.filterIsInstance<KoogMessage.Tool.Call>()
-    if (calls.isEmpty() || step >= parameters.maxSteps) return responses
-    addAssistantWithCalls(messages, calls)
-    executeTools(calls, tools, messages, toolCallBack)
-    val prompt = buildPrompt(messages, parameters, true)
+    if (calls.isEmpty() || step >= parameters.maxSteps) return responses to messages
+    val assistantMessage = createAssistantWithCalls(calls)
+    val toolResults = executeTools(calls, tools, toolCallBack)
+    val updatedMessages = messages + assistantMessage + toolResults
+    val prompt = buildPrompt(updatedMessages, parameters, true)
     val newResponses = executeKoog(client, prompt, llModel, koogTools)
-    return handleTools(client, newResponses, llModel, koogTools, tools, messages, parameters, toolCallBack, step + 1)
+    val (furtherResponses, finalMessages) = handleTools(client, newResponses, updatedMessages, llModel, koogTools, tools, parameters, toolCallBack, step + 1)
+    return (responses + furtherResponses) to finalMessages
   }
 
-  private fun addAssistantWithCalls(messages: MutableList<Message>, calls: List<KoogMessage.Tool.Call>) {
+  private fun createAssistantWithCalls(calls: List<KoogMessage.Tool.Call>): Message {
     val requests = calls.map { predictable.tool.ToolCallRequest(it.id ?: "", it.tool, it.content) }
-    messages.add(Message(MessageRole.Assistant, "", toolCalls = requests))
+    return Message(MessageRole.Assistant, "", toolCalls = requests)
   }
 
-  private suspend fun executeTools(calls: List<KoogMessage.Tool.Call>, tools: List<AI<*, *>>, messages: MutableList<Message>, toolCallBack: ToolCallback?) {
-    calls.forEach { call -> executeTool(call, tools, messages, toolCallBack) }
-  }
+  private suspend fun executeTools(
+    calls: List<KoogMessage.Tool.Call>,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?
+  ): List<Message> =
+    calls.map { call -> executeTool(call, tools, toolCallBack) }
 
-  private suspend fun executeTool(call: KoogMessage.Tool.Call, tools: List<AI<*, *>>, messages: MutableList<Message>, toolCallBack: ToolCallback?) {
+  private suspend fun executeTool(
+    call: KoogMessage.Tool.Call,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?
+  ): Message =
     try {
-      val tool = tools.firstOrNull { it.name == call.tool } ?: error("Tool ${call.tool} not found")
-      val id = call.id ?: ""
-      toolCallBack?.onToolCall(tool, id, call.content)
-      val input = (tool as AI<Any?, Any?>).schema.inputFromJson(call.content)
-      val output = tool.invoke(input)
-      val result = serializeOutput(output, tool)
-      toolCallBack?.onToolResponse(tool, id, result)
-      messages.add(Message(MessageRole.ToolResult, result, toolCallId = id, name = call.tool))
+      executeToolSuccess(call, tools, toolCallBack)
     } catch (e: Exception) {
-      messages.add(Message(MessageRole.ToolResult, "Error: ${e.message}", toolCallId = call.id, name = call.tool))
+      Message(MessageRole.ToolResult, "Error: ${e.message}", toolCallId = call.id, name = call.tool)
     }
+
+  private suspend fun executeToolSuccess(
+    call: KoogMessage.Tool.Call,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?
+  ): Message {
+    val tool = tools.firstOrNull { it.name == call.tool } ?: error("Tool ${call.tool} not found")
+    val id = call.id ?: ""
+    toolCallBack?.onToolCall(tool, id, call.content)
+    val input = (tool as AI<Any?, Any?>).schema.inputFromJson(call.content)
+    val output = tool.invoke(input)
+    val result = serializeOutput(output, tool)
+    toolCallBack?.onToolResponse(tool, id, result)
+    return Message(MessageRole.ToolResult, result, toolCallId = id, name = call.tool)
   }
 
   @Suppress("UNCHECKED_CAST")
@@ -391,7 +411,7 @@ class AgentProvider(
     llModel: LLModel,
     koogTools: List<ToolDescriptor>,
     tools: List<AI<*, *>>,
-    messages: MutableList<Message>,
+    messages: List<Message>,
     parameters: RequestParameters,
     toolCallBack: ToolCallback?,
     step: Int,
@@ -399,48 +419,94 @@ class AgentProvider(
   ): Flow<StreamResponse<String>> = flow {
     val prompt = buildPrompt(messages, parameters, true)
     val stream = streamKoog(client, prompt, llModel, koogTools)
-    val calls = mutableListOf<StreamFrame.ToolCall>()
+    val toolCalls = mutableListOf<StreamFrame.ToolCall>()
     stream.collect { frame ->
       when (frame) {
         is StreamFrame.Append -> emit(StreamResponse.Chunk(frame.text))
-        is StreamFrame.ToolCall -> {
-          calls.add(frame)
-          emit(StreamResponse.ToolCall(predictable.tool.ToolCallRequest(frame.id ?: "", frame.name, frame.content)))
-        }
-        is StreamFrame.End -> {
-          val metadata = createMetadata(frame.metaInfo, modelId)
-          if (calls.isNotEmpty() && step < parameters.maxSteps) {
-            emit(StreamResponse.Metadata(metadata))
-            @Suppress("UNCHECKED_CAST")
-            executeStreamTools(calls, tools, messages, toolCallBack) { emit(it as StreamResponse<String>) }
-            streamWithTools(client, llModel, koogTools, tools, messages, parameters, toolCallBack, step + 1, modelId).collect { emit(it) }
-          } else {
-            emit(StreamResponse.Metadata(metadata))
-            emit(StreamResponse.End)
-          }
-        }
+        is StreamFrame.ToolCall -> handleStreamToolCall(frame, toolCalls, this)
+        is StreamFrame.End -> handleStreamEnd(frame, toolCalls, messages, tools, toolCallBack, client, llModel, koogTools, parameters, step, modelId, this)
       }
     }
   }
 
-  private suspend fun executeStreamTools(
-    calls: List<StreamFrame.ToolCall>,
-    tools: List<AI<*, *>>,
-    messages: MutableList<Message>,
-    toolCallBack: ToolCallback?,
-    emit: suspend (StreamResponse<*>) -> Unit
+  private suspend fun handleStreamToolCall(
+    frame: StreamFrame.ToolCall,
+    toolCalls: MutableList<StreamFrame.ToolCall>,
+    emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<String>>
   ) {
-    val koogCalls = calls.map { KoogMessage.Tool.Call(it.id, it.name, it.content, ResponseMetaInfo.Empty) }
-    addAssistantWithCalls(messages, koogCalls)
-    koogCalls.forEach { call -> executeToolWithEmit(call, tools, messages, toolCallBack, emit) }
+    toolCalls.add(frame)
+    emitter.emit(StreamResponse.ToolCall(predictable.tool.ToolCallRequest(frame.id ?: "", frame.name, frame.content)))
   }
+
+  private suspend fun handleStreamEnd(
+    frame: StreamFrame.End,
+    toolCalls: List<StreamFrame.ToolCall>,
+    messages: List<Message>,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?,
+    client: LLMClient,
+    llModel: LLModel,
+    koogTools: List<ToolDescriptor>,
+    parameters: RequestParameters,
+    step: Int,
+    modelId: String,
+    emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<String>>
+  ) {
+    val metadata = createMetadata(frame.metaInfo, modelId)
+    emitter.emit(StreamResponse.Metadata(metadata))
+    if (toolCalls.isNotEmpty() && step < parameters.maxSteps) {
+      val updatedMessages = executeAndCollectStreamTools(toolCalls, messages, tools, toolCallBack, emitter)
+      streamWithTools(client, llModel, koogTools, tools, updatedMessages, parameters, toolCallBack, step + 1, modelId).collect { emitter.emit(it) }
+    } else {
+      emitter.emit(StreamResponse.End)
+    }
+  }
+
+  private suspend fun executeAndCollectStreamTools(
+    toolCalls: List<StreamFrame.ToolCall>,
+    messages: List<Message>,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?,
+    emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<String>>
+  ): List<Message> {
+    val koogCalls = toolCalls.map { KoogMessage.Tool.Call(it.id, it.name, it.content, ResponseMetaInfo.Empty) }
+    val assistantMessage = createAssistantWithCalls(koogCalls)
+    val toolResults = executeStreamToolsList(koogCalls, tools, toolCallBack, emitter)
+    return messages + assistantMessage + toolResults
+  }
+
+  private suspend fun executeStreamToolsList(
+    calls: List<KoogMessage.Tool.Call>,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?,
+    emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<String>>
+  ): List<Message> =
+    calls.map { call -> executeToolWithEmitForMessage(call, tools, toolCallBack, emitter) }
+
+  private suspend fun executeToolWithEmitForMessage(
+    call: KoogMessage.Tool.Call,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?,
+    emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<String>>
+  ): Message =
+    try {
+      val message = executeToolSuccess(call, tools, toolCallBack)
+      val request = predictable.tool.ToolCallRequest(call.id ?: "", call.tool, call.content)
+      emitter.emit(StreamResponse.ToolResult(predictable.tool.ToolCallResponse(request, call.id ?: "", message.content)))
+      message
+    } catch (e: Exception) {
+      val message = Message(MessageRole.ToolResult, "Error: ${e.message}", toolCallId = call.id, name = call.tool)
+      val request = predictable.tool.ToolCallRequest(call.id ?: "", call.tool, call.content)
+      emitter.emit(StreamResponse.ToolResult(predictable.tool.ToolCallResponse(request, call.id ?: "", message.content)))
+      message
+    }
 
   private fun <T> streamStructuredWithTools(
     client: LLMClient,
     llModel: LLModel,
     koogTools: List<ToolDescriptor>,
     tools: List<AI<*, *>>,
-    messages: MutableList<Message>,
+    messages: List<Message>,
     schema: OutputSchema<T>,
     parameters: RequestParameters,
     toolCallBack: ToolCallback?,
@@ -449,59 +515,92 @@ class AgentProvider(
   ): Flow<StreamResponse<T>> = flow {
     val prompt = buildPrompt(messages, parameters, true)
     val stream = streamKoog(client, prompt, llModel, koogTools)
-    val calls = mutableListOf<StreamFrame.ToolCall>()
+    val toolCalls = mutableListOf<StreamFrame.ToolCall>()
     stream.collect { frame ->
       when (frame) {
         is StreamFrame.Append -> tryParse(frame.text, schema)?.let { emit(it) }
-        is StreamFrame.ToolCall -> {
-          calls.add(frame)
-          emit(StreamResponse.ToolCall(predictable.tool.ToolCallRequest(frame.id ?: "", frame.name, frame.content)))
-        }
-        is StreamFrame.End -> {
-          val metadata = createMetadata(frame.metaInfo, modelId)
-          if (calls.isNotEmpty() && step < parameters.maxSteps) {
-            emit(StreamResponse.Metadata(metadata))
-            @Suppress("UNCHECKED_CAST")
-            executeStreamTools(calls, tools, messages, toolCallBack) { emit(it as StreamResponse<T>) }
-            streamStructuredWithTools(client, llModel, koogTools, tools, messages, schema, parameters, toolCallBack, step + 1, modelId).collect { emit(it) }
-          } else {
-            emit(StreamResponse.Metadata(metadata))
-            emit(StreamResponse.End)
-          }
-        }
+        is StreamFrame.ToolCall -> handleStructuredStreamToolCall(frame, toolCalls, this)
+        is StreamFrame.End -> handleStructuredStreamEnd(frame, toolCalls, messages, tools, toolCallBack, client, llModel, koogTools, schema, parameters, step, modelId, this)
       }
     }
   }
 
-  private suspend fun executeToolWithEmit(
-    call: KoogMessage.Tool.Call,
-    tools: List<AI<*, *>>,
-    messages: MutableList<Message>,
-    toolCallBack: ToolCallback?,
-    emit: suspend (StreamResponse<*>) -> Unit
+  private suspend fun <T> handleStructuredStreamToolCall(
+    frame: StreamFrame.ToolCall,
+    toolCalls: MutableList<StreamFrame.ToolCall>,
+    emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<T>>
   ) {
-    try {
-      val tool = tools.firstOrNull { it.name == call.tool } ?: error("Tool ${call.tool} not found")
-      val id = call.id ?: ""
-      val request = predictable.tool.ToolCallRequest(id, call.tool, call.content)
-      toolCallBack?.onToolCall(tool, id, call.content)
-      val input = (tool as AI<Any?, Any?>).schema.inputFromJson(call.content)
-      val output = tool.invoke(input)
-      val result = serializeOutput(output, tool)
-      toolCallBack?.onToolResponse(tool, id, result)
-      messages.add(Message(MessageRole.ToolResult, result, toolCallId = id, name = call.tool))
-      emit(StreamResponse.ToolResult(predictable.tool.ToolCallResponse(request, id, result)))
-    } catch (e: Exception) {
-      val id = call.id ?: ""
-      val request = predictable.tool.ToolCallRequest(id, call.tool, call.content)
-      val error = "Error: ${e.message}"
-      messages.add(Message(MessageRole.ToolResult, error, toolCallId = call.id, name = call.tool))
-      emit(StreamResponse.ToolResult(predictable.tool.ToolCallResponse(request, id, error)))
+    toolCalls.add(frame)
+    emitter.emit(StreamResponse.ToolCall(predictable.tool.ToolCallRequest(frame.id ?: "", frame.name, frame.content)))
+  }
+
+  private suspend fun <T> handleStructuredStreamEnd(
+    frame: StreamFrame.End,
+    toolCalls: List<StreamFrame.ToolCall>,
+    messages: List<Message>,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?,
+    client: LLMClient,
+    llModel: LLModel,
+    koogTools: List<ToolDescriptor>,
+    schema: OutputSchema<T>,
+    parameters: RequestParameters,
+    step: Int,
+    modelId: String,
+    emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<T>>
+  ) {
+    val metadata = createMetadata(frame.metaInfo, modelId)
+    emitter.emit(StreamResponse.Metadata(metadata))
+    if (toolCalls.isNotEmpty() && step < parameters.maxSteps) {
+      val updatedMessages = executeAndCollectStructuredStreamTools(toolCalls, messages, tools, toolCallBack, emitter)
+      streamStructuredWithTools(client, llModel, koogTools, tools, updatedMessages, schema, parameters, toolCallBack, step + 1, modelId).collect { emitter.emit(it) }
+    } else {
+      emitter.emit(StreamResponse.End)
     }
   }
 
+  private suspend fun <T> executeAndCollectStructuredStreamTools(
+    toolCalls: List<StreamFrame.ToolCall>,
+    messages: List<Message>,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?,
+    emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<T>>
+  ): List<Message> {
+    val koogCalls = toolCalls.map { KoogMessage.Tool.Call(it.id, it.name, it.content, ResponseMetaInfo.Empty) }
+    val assistantMessage = createAssistantWithCalls(koogCalls)
+    val toolResults = executeStructuredStreamToolsList(koogCalls, tools, toolCallBack, emitter)
+    return messages + assistantMessage + toolResults
+  }
+
+  private suspend fun <T> executeStructuredStreamToolsList(
+    calls: List<KoogMessage.Tool.Call>,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?,
+    emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<T>>
+  ): List<Message> =
+    calls.map { call -> executeToolWithEmitForStructuredMessage(call, tools, toolCallBack, emitter) }
+
+  private suspend fun <T> executeToolWithEmitForStructuredMessage(
+    call: KoogMessage.Tool.Call,
+    tools: List<AI<*, *>>,
+    toolCallBack: ToolCallback?,
+    emitter: kotlinx.coroutines.flow.FlowCollector<StreamResponse<T>>
+  ): Message =
+    try {
+      val message = executeToolSuccess(call, tools, toolCallBack)
+      val request = predictable.tool.ToolCallRequest(call.id ?: "", call.tool, call.content)
+      emitter.emit(StreamResponse.ToolResult(predictable.tool.ToolCallResponse(request, call.id ?: "", message.content)))
+      message
+    } catch (e: Exception) {
+      val message = Message(MessageRole.ToolResult, "Error: ${e.message}", toolCallId = call.id, name = call.tool)
+      val request = predictable.tool.ToolCallRequest(call.id ?: "", call.tool, call.content)
+      emitter.emit(StreamResponse.ToolResult(predictable.tool.ToolCallResponse(request, call.id ?: "", message.content)))
+      message
+    }
+
   private suspend fun <T> parseStructured(
     responses: List<KoogMessage.Response>,
+    allMessages: List<Message>,
     originalMessages: List<Message>,
     schema: OutputSchema<T>,
     model: Model,
@@ -513,32 +612,34 @@ class AgentProvider(
     maxRetries: Int = 3
   ): AgentResponse.Structured<T> {
     try {
-      return convertStructuredResponse(responses, schema, model.name)
+      return convertStructuredResponse(responses, allMessages, schema, model.name)
     } catch (e: Exception) {
       if (retryCount >= maxRetries) throw IllegalStateException("Failed after $maxRetries retries: ${e.message}", e)
       val client = getClient(model)
       val error = Message.user("Error parsing JSON: ${e.message}. Try again with valid JSON.")
-      val messages = originalMessages + responses.map { convertResponseToMessage(it) } + error
+      val messages = allMessages + error
       val prompt = buildPrompt(messages, parameters, tools.isNotEmpty())
       val koogTools = convertTools(tools)
-      val newResponses = executeWithTools(client, prompt, llModel, koogTools, tools, messages, parameters, toolCallBack)
-      return parseStructured(newResponses, originalMessages, schema, model, llModel, tools, parameters, toolCallBack, retryCount + 1, maxRetries)
+      val (newResponses, newAllMessages) = executeWithTools(client, prompt, llModel, koogTools, tools, messages, parameters, toolCallBack)
+      return parseStructured(newResponses, newAllMessages, originalMessages, schema, model, llModel, tools, parameters, toolCallBack, retryCount + 1, maxRetries)
     }
   }
 
-  private fun convertTextResponse(responses: List<KoogMessage.Response>, modelId: String): AgentResponse.Text {
+  private fun convertTextResponse(responses: List<KoogMessage.Response>, allMessages: List<Message>, modelId: String): AgentResponse.Text {
     val assistant = responses.filterIsInstance<KoogMessage.Assistant>().lastOrNull()
       ?: throw IllegalStateException("No assistant response")
-    val metadata = createMetadata(assistant.metaInfo, modelId)
-    return AgentResponse.Text(assistant.content, metadata, responses.map { convertResponseToMessage(it) })
+    val metadata = accumulateMetadata(responses, modelId)
+    val completeMessages = allMessages + responses.map { convertResponseToMessage(it) }
+    return AgentResponse.Text(assistant.content, metadata, completeMessages)
   }
 
-  private fun <T> convertStructuredResponse(responses: List<KoogMessage.Response>, schema: OutputSchema<T>, modelId: String): AgentResponse.Structured<T> {
+  private fun <T> convertStructuredResponse(responses: List<KoogMessage.Response>, allMessages: List<Message>, schema: OutputSchema<T>, modelId: String): AgentResponse.Structured<T> {
     val assistant = responses.filterIsInstance<KoogMessage.Assistant>().lastOrNull()
       ?: throw IllegalStateException("No assistant response")
     val parsed = schema.outputFromJson(assistant.content)
-    val metadata = createMetadata(assistant.metaInfo, modelId)
-    return AgentResponse.Structured(parsed, metadata, responses.map { convertResponseToMessage(it) })
+    val metadata = accumulateMetadata(responses, modelId)
+    val completeMessages = allMessages + responses.map { convertResponseToMessage(it) }
+    return AgentResponse.Structured(parsed, metadata, completeMessages)
   }
 
   private fun convertResponseToMessage(response: KoogMessage.Response): Message =
@@ -556,6 +657,24 @@ class AgentProvider(
       model = modelId,
       provider = inferProviderName(modelId)
     )
+
+  private fun accumulateMetadata(responses: List<KoogMessage.Response>, modelId: String): AgentMetadata {
+    val (prompt, completion, total) = responses.fold(Triple(0, 0, 0)) { acc, response ->
+      val info = extractMetaInfo(response)
+      Triple(
+        acc.first + (info.inputTokensCount ?: 0),
+        acc.second + (info.outputTokensCount ?: 0),
+        acc.third + (info.totalTokensCount ?: 0)
+      )
+    }
+    return AgentMetadata(prompt, completion, total, modelId, inferProviderName(modelId))
+  }
+
+  private fun extractMetaInfo(response: KoogMessage.Response): ResponseMetaInfo = when (response) {
+    is KoogMessage.Assistant -> response.metaInfo
+    is KoogMessage.Tool.Call -> response.metaInfo
+    is KoogMessage.Tool.Result -> response.metaInfo
+  }
 
   private fun inferProviderName(modelId: String): String = when {
     modelId.startsWith("gpt-") -> "openai"

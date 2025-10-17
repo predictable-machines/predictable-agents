@@ -3,6 +3,7 @@ package predictable
 import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.Serializable
 import predictable.TestUtils.workflowWithEmptyState
+import predictable.agent.MessageRole
 import predictable.agent.Model
 import predictable.agent.RequestParameters
 import predictable.agent.StreamResponse
@@ -92,6 +93,22 @@ class AgentMetadataAccumulationTest {
         // Verify we got messages including tool interactions
         assertNotNull(response.messages)
         assertTrue(response.messages.isNotEmpty())
+
+        // Verify that the message history includes both tool calls (not just the final response)
+        // There should be at least: initial tool calls + tool results
+        // The first message should be tool calls
+        val toolCallMessages = response.messages.filter { it.toolCalls != null && it.toolCalls!!.isNotEmpty() }
+        assertTrue(
+            toolCallMessages.isNotEmpty(),
+            "Should have at least one message with tool calls in the response history"
+        )
+
+        // Verify we have tool result messages
+        val toolResultMessages = response.messages.filter { it.role == MessageRole.ToolResult }
+        assertTrue(
+            toolResultMessages.size >= 2,
+            "Should have at least 2 tool result messages (for calculator and weather)"
+        )
     }
 
     @Test
@@ -244,5 +261,75 @@ class AgentMetadataAccumulationTest {
         // Verify we have messages from the interaction
         assertNotNull(response.messages)
         assertTrue(response.messages.isNotEmpty())
+
+        // Verify that ALL responses from multi-step tool calling are preserved
+        // Even when max steps is reached, we should have accumulated all the messages
+        val toolCallMessages = response.messages.filter { it.toolCalls != null && it.toolCalls!!.isNotEmpty() }
+        assertTrue(
+            toolCallMessages.isNotEmpty(),
+            "Should have tool call messages even when max steps is reached"
+        )
+
+        val toolResultMessages = response.messages.filter { it.role == MessageRole.ToolResult }
+        assertTrue(
+            toolResultMessages.isNotEmpty(),
+            "Should have tool result messages even when max steps is reached"
+        )
+    }
+
+    @Test
+    fun `agent should preserve all tool interaction messages across multiple steps`() = workflowWithEmptyState {
+        // This test specifically verifies the bug where handleTools was discarding earlier responses
+
+        val agent = Agent(
+            name = "MessageAccumulationTestAgent",
+            description = "Agent for testing message accumulation bug",
+            system = "You are a helpful assistant. Use the provided tools when needed.",
+            model = Model.defaultModel,
+            tools = listOf(calculatorTool, weatherTool)
+        )
+
+        // Make a request that triggers tool usage
+        val response = agent.chat("Calculate 7 + 2, then get weather for London")
+
+        // Count the different message types
+        val assistantMessages = response.messages.filter { it.role == MessageRole.Assistant }
+        val toolCallMessages = response.messages.filter { it.toolCalls != null && it.toolCalls!!.isNotEmpty() }
+        val toolResultMessages = response.messages.filter { it.role == MessageRole.ToolResult }
+
+        // We should have:
+        // 1. At least one assistant message with tool calls
+        // 2. Tool result messages for each tool called
+        // 3. A final assistant message with the text response
+        assertTrue(
+            toolCallMessages.isNotEmpty(),
+            "Should have preserved the assistant message with tool calls"
+        )
+
+        assertTrue(
+            toolResultMessages.size >= 2,
+            "Should have preserved both tool result messages (calculator and weather), but got ${toolResultMessages.size}"
+        )
+
+        assertTrue(
+            assistantMessages.size >= 2,
+            "Should have at least 2 assistant messages (tool calls + final response), but got ${assistantMessages.size}"
+        )
+
+        // Verify the order makes sense: tool calls should come before results
+        val toolCallIndices = response.messages.withIndex()
+            .filter { it.value.toolCalls != null && it.value.toolCalls!!.isNotEmpty() }
+            .map { it.index }
+
+        val toolResultIndices = response.messages.withIndex()
+            .filter { it.value.role == MessageRole.ToolResult }
+            .map { it.index }
+
+        if (toolCallIndices.isNotEmpty() && toolResultIndices.isNotEmpty()) {
+            assertTrue(
+                toolCallIndices.first() < toolResultIndices.first(),
+                "Tool calls should come before tool results in the message history"
+            )
+        }
     }
 }
