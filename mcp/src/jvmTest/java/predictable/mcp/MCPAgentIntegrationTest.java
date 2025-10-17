@@ -389,8 +389,6 @@ public class MCPAgentIntegrationTest {
             env
         );
         assertEquals(env, stdioWithEnv.getEnv());
-        
-        System.out.println("ServerConfig @JvmOverloads test passed");
     }
     
     @Test

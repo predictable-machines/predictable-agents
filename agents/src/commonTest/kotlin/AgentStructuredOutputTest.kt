@@ -55,8 +55,6 @@ class AgentStructuredOutputTest {
         assertNotNull(response)
         assertEquals("London", response.location)
         assertTrue(response.conditions.isNotEmpty())
-
-        println("Weather Response: $response")
     }
 
     @Test
@@ -71,8 +69,6 @@ class AgentStructuredOutputTest {
         assertTrue(response.name.isNotEmpty())
         assertTrue(response.age > 0)
         assertTrue(response.occupation.isNotEmpty())
-
-        println("Person Info Response: $response")
     }
 
     @Test
@@ -86,12 +82,6 @@ class AgentStructuredOutputTest {
 
         // Verify that we got some responses
         assertTrue(streamResponses.isNotEmpty(), "Stream responses should not be empty")
-
-        // Print all responses for debugging
-        println("All responses:")
-        streamResponses.forEach { response ->
-            println("Response: $response")
-        }
 
         // Verify that we got an end marker
         val endMarkers = streamResponses.filterIsInstance<StreamResponse.End>()
@@ -109,12 +99,6 @@ class AgentStructuredOutputTest {
 
         // Verify that we got some responses
         assertTrue(streamResponses.isNotEmpty(), "Stream responses should not be empty")
-
-        // Print all responses for debugging
-        println("All responses:")
-        streamResponses.forEach { response ->
-            println("Response: $response")
-        }
 
         // Verify that we got an end marker
         val endMarkers = streamResponses.filterIsInstance<StreamResponse.End>()
