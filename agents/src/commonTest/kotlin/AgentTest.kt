@@ -27,7 +27,6 @@ class AgentTest {
     // Verify the response
     assertNotNull(response)
     assertTrue(response.isNotEmpty())
-    println("Response: $response")
   }
 
   @Test
@@ -82,17 +81,6 @@ class AgentTest {
 
     // Verify that we received chunks
     assertTrue(chunks.isNotEmpty())
-
-    // Print all chunks for debugging
-    chunks.forEach { chunk ->
-      when (chunk) {
-        is StreamResponse.Chunk<*> -> println("Chunk: ${chunk.value}")
-        is StreamResponse.Metadata -> println("Metadata: ${chunk.value}")
-        StreamResponse.End -> println("End of stream")
-        is StreamResponse.ToolCall -> println("ToolCall: ${chunk.value}")
-        is StreamResponse.ToolResult -> println("ToolResult: ${chunk.value}")
-      }
-    }
   }
 
 }

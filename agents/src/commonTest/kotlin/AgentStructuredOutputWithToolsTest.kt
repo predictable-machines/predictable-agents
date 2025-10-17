@@ -136,8 +136,6 @@ class AgentStructuredOutputWithToolsTest {
         assertEquals(Operation.MULTIPLY, lastCalculatorInputInCombinedTest?.operation, "Operation should be 'multiply'")
         assertEquals(7, lastCalculatorInputInCombinedTest?.a, "First number should be 7")
         assertEquals(8, lastCalculatorInputInCombinedTest?.b, "Second number should be 8")
-
-        println("Calculation Response: $response")
     }
 
     @Test
@@ -163,8 +161,6 @@ class AgentStructuredOutputWithToolsTest {
         assertTrue(weatherToolInvokedInCombinedTest, "Weather tool should have been invoked")
         assertNotNull(lastWeatherInputInCombinedTest, "Weather input should not be null")
         assertEquals("San Francisco", lastWeatherInputInCombinedTest?.query, "Query should be 'San Francisco'")
-
-        println("Weather Forecast Response: $response")
     }
 
     @Test
@@ -182,12 +178,6 @@ class AgentStructuredOutputWithToolsTest {
 
         // Verify that we got some responses
         assertTrue(streamResponses.isNotEmpty(), "Stream responses should not be empty")
-
-        // Print all responses for debugging
-        println("All responses:")
-        streamResponses.forEach { response ->
-            println("Response: $response")
-        }
 
         // Verify that we got an end marker
         val endMarkers = streamResponses.filterIsInstance<StreamResponse.End>()
@@ -216,12 +206,6 @@ class AgentStructuredOutputWithToolsTest {
 
         // Verify that we got some responses
         assertTrue(streamResponses.isNotEmpty(), "Stream responses should not be empty")
-
-        // Print all responses for debugging
-        println("All responses:")
-        streamResponses.forEach { response ->
-            println("Response: $response")
-        }
 
         // Verify that we got an end marker
         val endMarkers = streamResponses.filterIsInstance<StreamResponse.End>()

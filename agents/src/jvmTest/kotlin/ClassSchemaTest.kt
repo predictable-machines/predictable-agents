@@ -30,8 +30,6 @@ class ClassSchemaTest {
             jsonSchema.contains("\"type\"") || jsonSchema.contains("\"properties\""),
             "Schema should contain type or properties: $jsonSchema"
         )
-        
-        println("Input JSON Schema: $jsonSchema")
     }
 
     @Test
@@ -47,8 +45,6 @@ class ClassSchemaTest {
             jsonSchema.contains("\"type\"") || jsonSchema.contains("\"properties\""),
             "Schema should contain type or properties: $jsonSchema"
         )
-        
-        println("Output JSON Schema: $jsonSchema")
     }
 
     @Test
@@ -64,9 +60,6 @@ class ClassSchemaTest {
         val outputSchema = schema.outputJsonSchema()
         assertNotNull(outputSchema)
         assertEquals("TestOutput", schema.outputSerialName())
-        
-        println("Combined Schema - Input: $inputSchema")
-        println("Combined Schema - Output: $outputSchema")
     }
 
     @Test

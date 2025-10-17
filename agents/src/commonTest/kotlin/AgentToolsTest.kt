@@ -79,7 +79,6 @@ class AgentToolsTest {
         // Verify the response
         assertNotNull(response)
         assertTrue(response.isNotEmpty())
-        println("Response: $response")
 
         // Verify that the calculator tool was invoked
         assertTrue(calculatorToolInvoked, "Calculator tool should have been invoked")
@@ -119,9 +118,6 @@ class AgentToolsTest {
         // Verify that we got an end marker
         val endMarkers = streamResponses.filterIsInstance<StreamResponse.End>()
         assertTrue(endMarkers.isNotEmpty(), "Should have received an end marker")
-
-        // Print the content chunks for debugging
-        println("Content chunks: ${contentChunks.joinToString { it.value }}")
     }
 
 }
