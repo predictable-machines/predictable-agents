@@ -98,7 +98,6 @@ class AgentToolRoundsTest {
         // Verify the response
         assertNotNull(response)
         assertTrue(response.isNotEmpty())
-        println("Response: $response")
 
         // Verify that both tools were invoked and the calculator was used twice
         assertTrue(calculatorInvocationCount > 0, "Calculator tool should have been invoked")
@@ -107,10 +106,6 @@ class AgentToolRoundsTest {
         // We expect at least 3 rounds: calculator, weather, calculator again
         val totalInvocations = calculatorInvocationCount + weatherInvocationCount
         assertTrue(totalInvocations >= 3, "Expected at least 3 tool invocations, but got $totalInvocations")
-
-        println("Calculator invocations: $calculatorInvocationCount")
-        println("Weather invocations: $weatherInvocationCount")
-        println("Total invocations: $totalInvocations")
     }
 
     @Test
@@ -129,20 +124,7 @@ class AgentToolRoundsTest {
 
         val result: Flow<StreamResponse<String>> = agentWithLimitedSteps.stream("call the random generator tool until you get the number `1000` back")
 
-        result.collect {
-            when (it) {
-              is StreamResponse.Chunk<*> ->
-                  print(it.value)
-              StreamResponse.End ->
-                  println("End of stream")
-              is StreamResponse.Metadata ->
-                  println("Metadata: ${it.value}")
-              is StreamResponse.ToolCall ->
-                  println("Tool call: ${it.value}")
-              is StreamResponse.ToolResult ->
-                  println("Tool result: ${it.value}")
-            }
-        }
+        result.collect { }
 
         assertTrue(randomGeneratorToolCount <= 20,
             "Expected at most 20 tool invocations with maxSteps=10 (considering batch processing), but got $randomGeneratorToolCount")

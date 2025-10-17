@@ -37,7 +37,6 @@ class AgentToolCrashTest {
     // Verify the response
     assertNotNull(response)
     assertTrue(response.isNotEmpty())
-    println("Response: $response")
   }
 
 }

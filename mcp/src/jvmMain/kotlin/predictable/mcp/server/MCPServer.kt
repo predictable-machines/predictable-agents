@@ -113,9 +113,7 @@ object MCPServer {
     return Tool.Input(
       properties = schema["properties"]?.jsonObject ?: error("Invalid schema: $schema"),
       required = schema["required"]?.jsonArray?.map { it.toString() }
-    ).also {
-      println("Tool Input: $it")
-    }
+    )
   }
 
   /**

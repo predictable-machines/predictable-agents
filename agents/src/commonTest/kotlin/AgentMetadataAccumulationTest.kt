@@ -88,12 +88,7 @@ class AgentMetadataAccumulationTest {
                 "Total tokens should be at least the sum of prompt and completion tokens"
             )
         }
-        
-        // Log the metadata for debugging
-        println("Non-streaming metadata: prompt=${response.metadata.promptTokens}, " +
-                "completion=${response.metadata.completionTokens}, " +
-                "total=${response.metadata.totalTokens}")
-        
+
         // Verify we got messages including tool interactions
         assertNotNull(response.messages)
         assertTrue(response.messages.isNotEmpty())
@@ -132,13 +127,9 @@ class AgentMetadataAccumulationTest {
         assertNotNull(finalMetadata.value.promptTokens)
         assertNotNull(finalMetadata.value.completionTokens)
         assertNotNull(finalMetadata.value.totalTokens)
-        
+
         // If OpenAI provided usage data, these should be non-zero
         // But some models might not provide usage data, so we just verify the structure
-        println("Got ${metadataResponses.size} metadata emission(s) with final totals: " +
-                "prompt=${finalMetadata.value.promptTokens}, " +
-                "completion=${finalMetadata.value.completionTokens}, " +
-                "total=${finalMetadata.value.totalTokens}")
 
         // Verify we got tool calls
         val toolCalls = responses.filterIsInstance<StreamResponse.ToolCall>()
@@ -173,12 +164,7 @@ class AgentMetadataAccumulationTest {
         val metadataResponses = responses.filterIsInstance<StreamResponse.Metadata>()
         val toolCallResponses = responses.filterIsInstance<StreamResponse.ToolCall>()
         val toolResultResponses = responses.filterIsInstance<StreamResponse.ToolResult>()
-        
-        // Log for debugging
-        println("Total metadata emissions: ${metadataResponses.size}")
-        println("Tool calls: ${toolCallResponses.size}")
-        println("Tool results: ${toolResultResponses.size}")
-        
+
         // We should have at least:
         // - Tool calls for calculator and weather
         assertTrue(toolCallResponses.size >= 1, "Should have at least one tool call")
@@ -188,9 +174,7 @@ class AgentMetadataAccumulationTest {
         // - One at the end (final)
         // With 2 tool calls, we expect at least 2 metadata emissions
         assertTrue(metadataResponses.size >= 2, "Should have at least 2 metadata emissions (intermediate + final)")
-        
-        println("Got ${metadataResponses.size} metadata emissions - intermediate emission is working!")
-        
+
         // Verify that metadata values are accumulating (if non-zero)
         val firstMetadata = metadataResponses.first()
         val lastMetadata = metadataResponses.last()
@@ -245,13 +229,10 @@ class AgentMetadataAccumulationTest {
         assertNotNull(response.metadata.promptTokens)
         assertNotNull(response.metadata.completionTokens)
         assertNotNull(response.metadata.totalTokens)
-        
+
         // When max steps is reached, we should have accumulated metadata from multiple rounds
         // Even if all values are 0 (due to model limitations), the structure should be present
-        println("Max steps metadata: prompt=${response.metadata.promptTokens}, " +
-                "completion=${response.metadata.completionTokens}, " +
-                "total=${response.metadata.totalTokens}")
-        
+
         // Verify consistency if we have actual usage data
         if (response.metadata.totalTokens > 0) {
             assertTrue(

@@ -124,7 +124,6 @@ class MCPClient private constructor(
     serverConfig: ServerConfig.SSE
   ) : () -> Unit {
     val httpClient = defaultHttpClient()
-    println("Connecting to ${serverConfig.url}")
     client.connect(
       SseClientTransport(
         client = httpClient,
@@ -266,7 +265,6 @@ class MCPClient private constructor(
       block: suspend (MCPClient) -> A
     ): A {
       val mcpClient = MCPClient(config)
-      println("Connecting to MCP servers: ${mcpClient.clients.keys.joinToString { it.toString() }}")
       val closeables = mcpClient.connect()
       var result: A? = null
       try {
