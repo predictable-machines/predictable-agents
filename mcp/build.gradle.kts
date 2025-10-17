@@ -1,6 +1,7 @@
 import com.predictable.machines.build.logic.setupKotlinMultiplatformJvm
 import com.predictable.machines.build.logic.setupKotlinMultiplatformWAsmTargets
-import com.predictable.machines.build.logic.setupKotlinMultiplatformiOSTargets
+// iOS not supported by kotlin-mcp-sdk 0.7.2
+// import com.predictable.machines.build.logic.setupKotlinMultiplatformiOSTargets
 
 plugins {
     alias(libs.plugins.conventions)
@@ -11,7 +12,7 @@ plugins {
 }
 
 setupKotlinMultiplatformJvm()
-setupKotlinMultiplatformiOSTargets()
+// setupKotlinMultiplatformiOSTargets()  // iOS not supported by kotlin-mcp-sdk 0.7.2
 setupKotlinMultiplatformWAsmTargets()
 
 kotlin {

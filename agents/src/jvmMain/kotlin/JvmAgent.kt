@@ -51,7 +51,7 @@ abstract class JvmAgent @JvmOverloads constructor(
     target: Class<T>
   ): Publisher<StreamResponse<T>> {
     val schema = ClassOutputSchema(target)
-    val stream = structuredStream(input, schema)
+    val stream = coroutineDispatcher.future { structuredStream(input, schema) }.get()
     return stream.value.asPublisher()
   }
 
@@ -59,7 +59,7 @@ abstract class JvmAgent @JvmOverloads constructor(
    * Stream text responses as Publisher.
    */
   fun streamAsPublisher(input: AgentInput): Publisher<StreamResponse<String>> {
-    val stream = super.stream(input)
+    val stream = coroutineDispatcher.future { super.stream(input) }.get()
     return stream.value.asPublisher()
   }
 
@@ -88,7 +88,10 @@ abstract class JvmAgent @JvmOverloads constructor(
     requestParameters: RequestParameters = parameters
   ): Publisher<StreamResponse<T>> {
     val schema = ClassSchema(inputClass, outputClass)
-    return structuredStream(AgentInput.Structured(input, schema, requestParameters), schema).value.asPublisher()
+    val stream = coroutineDispatcher.future {
+      structuredStream(AgentInput.Structured(input, schema, requestParameters), schema)
+    }.get()
+    return stream.value.asPublisher()
   }
 
   // ==================== CompletableFuture Async Methods ====================

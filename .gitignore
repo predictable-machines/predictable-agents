@@ -11,3 +11,22 @@ build/
 captures
 local.properties
 xcuserdata
+
+# Kotlin/JVM
+*.class
+*.jar
+*.log
+out/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db

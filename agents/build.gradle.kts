@@ -1,7 +1,6 @@
 import com.predictable.machines.build.logic.setupKotlinMultiplatformAndroid
 import com.predictable.machines.build.logic.setupKotlinMultiplatformAppleTargets
 import com.predictable.machines.build.logic.setupKotlinMultiplatformJvm
-import com.predictable.machines.build.logic.setupKotlinMultiplatformLinuxTargets
 import com.predictable.machines.build.logic.setupKotlinMultiplatformWAsmTargets
 import org.jetbrains.dokka.gradle.DokkaTask
 import java.net.URL
@@ -18,7 +17,6 @@ plugins {
 // setupKotlinMultiplatformAndroid()
 setupKotlinMultiplatformJvm()
 setupKotlinMultiplatformAppleTargets()
-setupKotlinMultiplatformLinuxTargets()
 setupKotlinMultiplatformWAsmTargets()
 
 kotlin {
@@ -28,15 +26,15 @@ kotlin {
                 api(libs.arrow.core)
                 api(libs.arrow.core.serialization)
                 api(libs.arrow.fx.coroutines)
-                implementation(libs.openai.client)
                 implementation(libs.kotlin.serialization.json)
                 implementation(libs.xemantic.ai.tool.schema)
                 implementation(libs.kotlin.envvar)
                 implementation(libs.kotlin.logging)
+                implementation(libs.koog.agents)
                 runtimeOnly(libs.ktor.client.cio)
             }
         }
-        
+
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
@@ -64,6 +62,10 @@ kotlin {
                 implementation(libs.kotlin.test.junit)
             }
         }
+
+        // Configure Apple (iOS/macOS) source sets - Darwin HTTP client
+        appleMain { dependencies { implementation(libs.ktor.client.darwin) } }
+
         // Configure WASM JS source sets
         wasmJsMain { dependencies { implementation(libs.ktor.client.js) } }
     }

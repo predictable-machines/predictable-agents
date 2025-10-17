@@ -8,7 +8,6 @@ import io.modelcontextprotocol.kotlin.sdk.server.*
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import predictable.AI
-import predictable.agent.providers.openai.executeTool
 import predictable.tool.InputSchema
 import predictable.tool.KotlinSchema
 import java.util.UUID
@@ -79,6 +78,7 @@ object MCPServer {
       RegisteredTool(
         tool = Tool(
           name = tool.name,
+          title = tool.name,  // New in 0.7.2
           description = tool.description,
           inputSchema = tool.schema.toolInput(),
           outputSchema = null,
@@ -86,11 +86,12 @@ object MCPServer {
         ),
         handler = { request ->
           @Suppress("UNCHECKED_CAST")
-          tool as AI<Any?, Any?>
-          val input = tool.schema.inputFromJson(request.arguments.toString())
-          val id = UUID.randomUUID().toString()
-          val output = executeTool(targetTool = tool, input = input, toolCallback = null, id)
-          val jsonValue = KotlinSchema.json.encodeToString(output)
+          val typedTool = tool as AI<Any?, Any?>
+          @Suppress("UNCHECKED_CAST")
+          val schema = typedTool.schema as predictable.tool.Schema<Any?, Any?>
+          val input = schema.inputFromJson(request.arguments.toString())
+          val output = typedTool.invoke(input)
+          val jsonValue = schema.outputToJson(output)
           CallToolResult(//TODO handle images and other content types
             content = listOf(
               TextContent(jsonValue)

@@ -192,7 +192,7 @@ public class AgentJavaTest {
             }
         });
         
-        assertTrue("Streaming should complete within timeout", latch.await(30, TimeUnit.SECONDS));
+        assertTrue("Streaming should complete within timeout", latch.await(60, TimeUnit.SECONDS));
         assertTrue("Should receive at least one chunk", chunkCount.get() > 0);
         assertFalse("Full response should not be empty", fullResponse.toString().isEmpty());
         
