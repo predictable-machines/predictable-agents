@@ -27,6 +27,10 @@ import kotlin.jvm.JvmOverloads
  * @property topLogprobs Number of most likely tokens to return log probabilities for
  * @property instanceId Unique identifier for this request instance
  * @property maxSteps Maximum number of steps for multi-step operations
+ * @property compressionStrategy Strategy for compressing conversation history (WholeHistory, LastNMessages, etc.)
+ * @property maxHistorySize Maximum number of messages to keep in history
+ * @property maxTokens Maximum estimated token count for the entire prompt
+ * @property enableTokenCaching Enable caching for token count estimation
  */
 @Serializable
 data class RequestParameters @JvmOverloads constructor(
@@ -45,6 +49,10 @@ data class RequestParameters @JvmOverloads constructor(
   val topLogprobs: Int? = null,
   val instanceId: String? = null,
   val maxSteps: Int = MAX_STEPS,
+  val compressionStrategy: CompressionStrategy? = null,
+  val maxHistorySize: Int? = null,
+  val maxTokens: Int? = null,
+  val enableTokenCaching: Boolean = true,
 ) {
   companion object {
     /**
